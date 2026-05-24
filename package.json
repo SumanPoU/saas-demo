@@ -50,8 +50,11 @@
     "dotenv": "^17.4.2",
     "install": "^0.13.0",
     "nestjs-pino": "^4.6.1",
+    "pino": "^10.3.1",
     "pino-http": "^11.0.0",
+    "pino-roll": "^4.0.0",
     "reflect-metadata": "^0.2.2",
+    "rotating-file-stream": "^3.2.9",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
