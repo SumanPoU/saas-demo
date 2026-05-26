@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TerminusModule } from '@nestjs/terminus';
 import {
@@ -11,6 +11,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppLoggerModule } from './logger/logger.module';
 import configuration from './config/configuration';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { AuthGuard } from './auth/guards/auth.guard';
+import { AuthMiddleware } from './auth/middlewares/auth.middleware';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -21,6 +26,9 @@ import configuration from './config/configuration';
     }),
     AppLoggerModule,
     TerminusModule,
+    PrismaModule,
+    AuthModule,
+    MailModule,
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService): ThrottlerModuleOptions => ({
@@ -46,6 +54,14 @@ import configuration from './config/configuration';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AuthMiddleware).forRoutes('*');
+  }
+}

@@ -23,6 +23,14 @@ export default () => ({
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
   },
 
+  mail: {
+    host: process.env.MAIL_HOST ?? 'localhost',
+    port: parseInt(process.env.MAIL_PORT ?? '2525', 10),
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
+    from: process.env.MAIL_FROM ?? '"SaaS Demo" <noreply@demo.com>',
+  },
+
   throttle: {
     short: {
       ttl: parseInt(process.env.THROTTLE_SHORT_TTL ?? '1000', 10),

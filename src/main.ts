@@ -5,7 +5,7 @@ import {
 } from '@nestjs/platform-fastify';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
-import { VersioningType } from '@nestjs/common';
+import { VersioningType, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from '@fastify/helmet';
 import compression from '@fastify/compress';
@@ -50,6 +50,15 @@ async function bootstrap() {
     defaultVersion: '1',
     prefix: 'v',
   });
+
+  // 6b. Global validation pipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   // 7. Swagger API Documentation Setup
   if (configService.get('node_env') !== 'production') {

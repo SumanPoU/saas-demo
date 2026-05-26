@@ -8,6 +8,7 @@ import {
   DiskHealthIndicator,
 } from '@nestjs/terminus';
 import { AppService } from './app.service';
+import { Public } from './auth/decorators/public.decorator';
 
 @ApiTags('System')
 @SkipThrottle()
@@ -20,6 +21,7 @@ export class AppController {
     private readonly appService: AppService,
   ) {}
 
+  @Public()
   @Get()
   @ApiOperation({ summary: 'Get application info and status' })
   @ApiResponse({
@@ -30,6 +32,7 @@ export class AppController {
     return this.appService.getApiInfo();
   }
 
+  @Public()
   @Get('health')
   @HealthCheck()
   @ApiOperation({ summary: 'Perform a comprehensive system health check' })

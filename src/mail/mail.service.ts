@@ -1,0 +1,160 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as nodemailer from 'nodemailer';
+
+@Injectable()
+export class MailService {
+  private transporter: nodemailer.Transporter;
+  private readonly logger = new Logger(MailService.name);
+
+  constructor(private readonly config: ConfigService) {
+    const host = this.config.get<string>('mail.host');
+    const port = this.config.get<number>('mail.port');
+    const user = this.config.get<string>('mail.user');
+    const pass = this.config.get<string>('mail.pass');
+
+    // Safe dynamic SMTP initialization fallback
+    if (!user || !pass || user === 'mock-user') {
+      this.logger.warn('SMTP credentials not configured. Using console logger fallback for outgoing mail.');
+      this.transporter = {
+        sendMail: async (options: any) => {
+          this.logger.log(`\n=========================================\n📬 [MOCK MAIL SENT]\nTo: ${options.to}\nSubject: ${options.subject}\nText: ${options.text}\n=========================================\n`);
+          return { messageId: 'mock-id' };
+        },
+      } as any;
+    } else {
+      this.transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465, // true for 465, false for standard ports (e.g. 587/2525)
+        auth: {
+          user,
+          pass,
+        },
+      });
+    }
+  }
+
+  /**
+   * Send a general text and HTML mail.
+   */
+  async sendEmail(to: string, subject: string, text: string, html: string) {
+    const from = this.config.get<string>('mail.from') ?? '"SaaS Demo" <noreply@demo.com>';
+    try {
+      await this.transporter.sendMail({
+        from,
+        to,
+        subject,
+        text,
+        html,
+      });
+      this.logger.log(`Email successfully sent to: ${to}`);
+    } catch (error) {
+      this.logger.error(`Failed to send email to ${to}:`, error);
+    }
+  }
+
+  /**
+   * Outbox Helper 1: Send Registration OTP Code
+   */
+  async sendRegistrationOtp(to: string, otp: string) {
+    const subject = 'Verify Your Email Address';
+    const text = `Your email verification OTP code is: ${otp}. This code is valid for 1 hour.`;
+    const html = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #eef2f6; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.01);">
+        <h2 style="color: #4f46e5; text-align: center; font-size: 24px; margin-bottom: 25px; font-weight: 700; letter-spacing: -0.5px;">Verify Your Email Address</h2>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">Hello,</p>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">Thank you for initiating registration on our platform. To verify your email address, please use the secure 6-digit OTP code below:</p>
+        <div style="text-align: center; margin: 35px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1e1b4b; background-color: #f8fafc; padding: 15px 35px; border-radius: 10px; border: 1px dashed #818cf8; display: inline-block;">${otp}</span>
+        </div>
+        <p style="color: #64748b; font-size: 14px; line-height: 1.5; text-align: center;">This OTP is valid for <strong>1 hour</strong>. If you did not request this, you can safely ignore this email.</p>
+        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">&copy; ${new Date().getFullYear()} SaaS Demo. All rights reserved.</p>
+      </div>
+    `;
+    await this.sendEmail(to, subject, text, html);
+  }
+
+  /**
+   * Outbox Helper 2: Send Email Verified Successfully Confirmation
+   */
+  async sendEmailVerifiedNotification(to: string, name?: string) {
+    const subject = 'Email Verified Successfully!';
+    const userName = name || 'User';
+    const text = `Hello ${userName}, Your email address has been successfully verified. You can now proceed to set your password and complete your registration.`;
+    const html = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #eef2f6; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #10b981; text-align: center; font-size: 24px; margin-bottom: 25px; font-weight: 700; letter-spacing: -0.5px;">Email Verified!</h2>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6;">Hello ${userName},</p>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">Your email address has been successfully verified in our system. You are now ready for the final step of registration: setting your secure account password!</p>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6;">Please return to the application screen to complete your password setup.</p>
+        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">&copy; ${new Date().getFullYear()} SaaS Demo. All rights reserved.</p>
+      </div>
+    `;
+    await this.sendEmail(to, subject, text, html);
+  }
+
+  /**
+   * Outbox Helper 3: Send Registration Completed / Welcome Email
+   */
+  async sendWelcomeNotification(to: string, name?: string) {
+    const subject = 'Welcome to Our Platform!';
+    const userName = name || 'User';
+    const text = `Hello ${userName}, Your account setup is complete. Welcome to our platform!`;
+    const html = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #eef2f6; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #4f46e5; text-align: center; font-size: 24px; margin-bottom: 25px; font-weight: 700; letter-spacing: -0.5px;">Welcome Aboard!</h2>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6;">Hello ${userName},</p>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">Welcome! Your account is now fully active, secure, and ready to use.</p>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6;">We are excited to have you on board. If you ever have any questions or require support, simply respond directly to this email.</p>
+        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">&copy; ${new Date().getFullYear()} SaaS Demo. All rights reserved.</p>
+      </div>
+    `;
+    await this.sendEmail(to, subject, text, html);
+  }
+
+  /**
+   * Outbox Helper 4: Send Password Reset OTP Code
+   */
+  async sendPasswordResetOtp(to: string, otp: string) {
+    const subject = 'Reset Your Password';
+    const text = `Your password reset code is: ${otp}. This code is valid for 1 hour.`;
+    const html = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #eef2f6; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #ef4444; text-align: center; font-size: 24px; margin-bottom: 25px; font-weight: 700; letter-spacing: -0.5px;">Password Reset Request</h2>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6;">Hello,</p>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">We received a request to reset the password for your account. To verify your identity and complete the reset, please use the 6-digit OTP code below:</p>
+        <div style="text-align: center; margin: 35px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1e1b4b; background-color: #f8fafc; padding: 15px 35px; border-radius: 10px; border: 1px dashed #f87171; display: inline-block;">${otp}</span>
+        </div>
+        <p style="color: #64748b; font-size: 14px; line-height: 1.5; text-align: center;">This OTP is valid for <strong>1 hour</strong>. If you did not request a password reset, please ignore this email and secure your account credentials.</p>
+        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">&copy; ${new Date().getFullYear()} SaaS Demo. All rights reserved.</p>
+      </div>
+    `;
+    await this.sendEmail(to, subject, text, html);
+  }
+
+  /**
+   * Outbox Helper 5: Send Password Updated Success Alert
+   */
+  async sendPasswordResetSuccessNotification(to: string, name?: string) {
+    const subject = 'Your Password Was Reset Successfully';
+    const userName = name || 'User';
+    const text = `Hello ${userName}, Your password was successfully updated. If you did not initiate this change, contact support immediately.`;
+    const html = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #eef2f6; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #10b981; text-align: center; font-size: 24px; margin-bottom: 25px; font-weight: 700; letter-spacing: -0.5px;">Password Reset Successful</h2>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6;">Hello ${userName},</p>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">This is a confirmation email that the password for your account was reset successfully.</p>
+        <p style="color: #ef4444; font-size: 16px; line-height: 1.6; font-weight: bold; margin-bottom: 25px;">If you did not make this change, please contact our support team immediately to freeze your account credentials.</p>
+        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">&copy; ${new Date().getFullYear()} SaaS Demo. All rights reserved.</p>
+      </div>
+    `;
+    await this.sendEmail(to, subject, text, html);
+  }
+}

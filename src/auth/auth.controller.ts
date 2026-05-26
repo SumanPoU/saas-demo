@@ -1,0 +1,141 @@
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AuthService } from './auth.service';
+import { InitiateRegisterDto, VerifyRegisterOtpDto, CompleteRegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordVerifyDto } from './dto/reset-password-verify.dto';
+import { ResetPasswordCompleteDto } from './dto/reset-password-complete.dto';
+import { Public } from './decorators/public.decorator';
+import { CurrentUser } from './decorators/current-user.decorator';
+
+@ApiTags('Authentication')
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Post('register/initiate')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Step 1: Initiate registration, generates a pending user and sends an email verification OTP' })
+  @ApiResponse({ status: 201, description: 'Verification OTP sent successfully' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 409, description: 'Email address already in use' })
+  async registerInitiate(@Body() dto: InitiateRegisterDto) {
+    return this.authService.registerInitiate(dto);
+  }
+
+  @Public()
+  @Post('register/verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Step 2: Verify the registration OTP code' })
+  @ApiResponse({ status: 200, description: 'OTP successfully verified' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
+  async registerVerifyOtp(@Body() dto: VerifyRegisterOtpDto) {
+    return this.authService.registerVerifyOtp(dto);
+  }
+
+  @Public()
+  @Post('register/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Step 3: Complete registration by setting the user password (manual login required after)' })
+  @ApiResponse({ status: 200, description: 'Account password configured successfully. User must manually login.' })
+  @ApiResponse({ status: 400, description: 'Password confirmation mismatch' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired email verification code' })
+  async registerComplete(@Body() dto: CompleteRegisterDto) {
+    return this.authService.registerComplete(dto);
+  }
+
+  @Public()
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Log in with username or email and password' })
+  @ApiResponse({ status: 200, description: 'Successful login, tokens returned' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials or account inactive' })
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: any,
+  ) {
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    const userAgent = req.headers?.['user-agent'];
+    return this.authService.login(dto, ipAddress, userAgent);
+  }
+
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rotate JWT access and refresh tokens' })
+  @ApiResponse({ status: 200, description: 'New token pair generated' })
+  @ApiResponse({ status: 401, description: 'Invalid/expired token or reuse security violation' })
+  async refresh(
+    @Body() dto: RefreshDto,
+    @Req() req: any,
+  ) {
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    const userAgent = req.headers?.['user-agent'];
+    return this.authService.refresh(dto, ipAddress, userAgent);
+  }
+
+  @ApiBearerAuth('JWT')
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Log out from the current active session' })
+  @ApiResponse({ status: 200, description: 'Session revoked successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async logout(
+    @CurrentUser() user: any,
+    @Req() req: any,
+  ) {
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    const userAgent = req.headers?.['user-agent'];
+    return this.authService.logout(user.sessionId, user.id, ipAddress, userAgent);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Step 1: Request password recovery using username or email address' })
+  @ApiResponse({ status: 200, description: 'Verification OTP generated' })
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+    @Req() req: any,
+  ) {
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    const userAgent = req.headers?.['user-agent'];
+    return this.authService.forgotPassword(dto, ipAddress, userAgent);
+  }
+
+  @Public()
+  @Post('reset-password/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Step 2: Verify the password recovery OTP code' })
+  @ApiResponse({ status: 200, description: 'OTP verified successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
+  async resetPasswordVerify(@Body() dto: ResetPasswordVerifyDto) {
+    return this.authService.resetPasswordVerify(dto);
+  }
+
+  @Public()
+  @Post('reset-password/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Step 3: Complete password recovery by setting a new password using recovery identifier and OTP code' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully, existing sessions terminated' })
+  @ApiResponse({ status: 400, description: 'Password confirmation mismatch' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired password reset code' })
+  async resetPasswordComplete(
+    @Body() dto: ResetPasswordCompleteDto,
+    @Req() req: any,
+  ) {
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    const userAgent = req.headers?.['user-agent'];
+    return this.authService.resetPasswordComplete(dto, ipAddress, userAgent);
+  }
+}
