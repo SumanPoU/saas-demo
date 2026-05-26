@@ -42,6 +42,7 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   mfaConfig               MfaConfig?
+  oauthAccounts           OAuthAccount[]
 
   // Audit
   auditLogs AuditLog[]
@@ -265,4 +266,16 @@ model AuditLog {
   @@index([actorId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model OAuthAccount {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String   // e.g. "google", "github"
+  providerId String   // unique id on Google/GitHub
+  createdAt  DateTime @default(now())
+
+  @@unique([provider, providerId])
+  @@map("oauth_accounts")
 }

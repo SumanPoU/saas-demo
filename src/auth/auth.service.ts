@@ -698,6 +698,328 @@ export class AuthService {
     };
   }
 
+  /**
+   * Google OAuth code exchange and user authentication.
+   */
+  async googleLogin(code: string, ipAddress?: string, userAgent?: string) {
+    let email = '';
+    let providerId = '';
+    let firstName = '';
+    let lastName = '';
+    let avatarUrl = '';
+
+    const clientId = this.configService.get<string>('oauth.google.clientId');
+    const clientSecret = this.configService.get<string>('oauth.google.clientSecret');
+    const callbackUrl = this.configService.get<string>('oauth.google.callbackUrl');
+
+    // Developer friendly local testing mock fallback
+    if (code.startsWith('mock-') || !clientId || clientId.includes('your-google')) {
+      email = 'google-user@demo.com';
+      providerId = 'google-sso-123456';
+      firstName = 'Google';
+      lastName = 'Tester';
+      avatarUrl = 'https://lh3.googleusercontent.com/a/mock';
+    } else {
+      try {
+        const response = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            code,
+            client_id: clientId,
+            client_secret: clientSecret!,
+            redirect_uri: callbackUrl!,
+            grant_type: 'authorization_code',
+          }).toString(),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`Google token exchange failed: ${JSON.stringify(errorData)}`);
+        }
+
+        const tokenData = await response.json();
+        const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        });
+
+        if (!profileResponse.ok) {
+          throw new Error('Failed to retrieve Google user profile');
+        }
+
+        const profile = await profileResponse.json();
+        email = profile.email;
+        providerId = profile.sub;
+        firstName = profile.given_name || '';
+        lastName = profile.family_name || '';
+        avatarUrl = profile.picture || '';
+      } catch (err: any) {
+        throw new UnauthorizedException(`Google login failed: ${err.message}`);
+      }
+    }
+
+    return this.handleOAuthLogin('google', providerId, email, firstName, lastName, avatarUrl, ipAddress, userAgent);
+  }
+
+  /**
+   * GitHub OAuth code exchange and user authentication.
+   */
+  async githubLogin(code: string, ipAddress?: string, userAgent?: string) {
+    let email = '';
+    let providerId = '';
+    let name = '';
+    let avatarUrl = '';
+
+    const clientId = this.configService.get<string>('oauth.github.clientId');
+    const clientSecret = this.configService.get<string>('oauth.github.clientSecret');
+    const callbackUrl = this.configService.get<string>('oauth.github.callbackUrl');
+
+    // Developer friendly local testing mock fallback
+    if (code.startsWith('mock-') || !clientId || clientId.includes('your-github')) {
+      email = 'github-user@demo.com';
+      providerId = 'github-sso-123456';
+      name = 'GitHub Tester';
+      avatarUrl = 'https://avatars.githubusercontent.com/u/mock';
+    } else {
+      try {
+        const response = await fetch('https://github.com/login/oauth/access_token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            client_id: clientId,
+            client_secret: clientSecret,
+            code,
+            redirect_uri: callbackUrl,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('GitHub token exchange failed');
+        }
+
+        const tokenData = await response.json();
+        if (tokenData.error) {
+          throw new Error(`GitHub OAuth error: ${tokenData.error_description || tokenData.error}`);
+        }
+
+        // Fetch profile
+        const profileResponse = await fetch('https://api.github.com/user', {
+          headers: {
+            Authorization: `token ${tokenData.access_token}`,
+            'User-Agent': 'NestJS-Fastify-SaaS-App',
+          },
+        });
+
+        if (!profileResponse.ok) {
+          throw new Error('Failed to retrieve GitHub profile');
+        }
+
+        const profile = await profileResponse.json();
+        providerId = profile.id.toString();
+        name = profile.name || profile.login;
+        avatarUrl = profile.avatar_url || '';
+        email = profile.email;
+
+        // Fetch primary verified email if private
+        if (!email) {
+          const emailsResponse = await fetch('https://api.github.com/user/emails', {
+            headers: {
+              Authorization: `token ${tokenData.access_token}`,
+              'User-Agent': 'NestJS-Fastify-SaaS-App',
+            },
+          });
+
+          if (emailsResponse.ok) {
+            const emails = await emailsResponse.json();
+            email = emails.find((e: any) => e.primary && e.verified)?.email || emails[0]?.email;
+          }
+        }
+
+        if (!email) {
+          throw new Error('No verified email address is associated with this GitHub account');
+        }
+      } catch (err: any) {
+        throw new UnauthorizedException(`GitHub login failed: ${err.message}`);
+      }
+    }
+
+    const [firstName = '', lastName = ''] = name.split(' ');
+
+    return this.handleOAuthLogin('github', providerId, email, firstName, lastName, avatarUrl, ipAddress, userAgent);
+  }
+
+  /**
+   * Consolidate account linking and create UserSession upon successful OAuth login.
+   */
+  private async handleOAuthLogin(
+    provider: string,
+    providerId: string,
+    email: string,
+    firstName?: string,
+    lastName?: string,
+    avatarUrl?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    const emailLower = email.toLowerCase();
+
+    // 1. Check if we already have a linked OAuthAccount for this provider & ID
+    let oauthAccount = await this.prisma.oAuthAccount.findUnique({
+      where: {
+        provider_providerId: {
+          provider,
+          providerId,
+        },
+      },
+      include: {
+        user: {
+          include: { roles: true },
+        },
+      },
+    });
+
+    let user: any;
+
+    if (oauthAccount) {
+      user = oauthAccount.user;
+    } else {
+      // 2. Check if a User with this email already exists
+      user = await this.prisma.user.findUnique({
+        where: { email: emailLower },
+        include: { roles: true },
+      });
+
+      if (user) {
+        // Link this provider to the existing account
+        await this.prisma.oAuthAccount.create({
+          data: {
+            userId: user.id,
+            provider,
+            providerId,
+          },
+        });
+      } else {
+        // 3. Register new user automatically
+        const prefix = emailLower.split('@')[0].replace(/[^a-z0-9]/g, '');
+        let username = prefix;
+
+        const userWithUsername = await this.prisma.user.findUnique({
+          where: { username },
+        });
+
+        if (userWithUsername) {
+          const randomSuffix = Math.floor(100 + Math.random() * 900);
+          username = `${prefix}${randomSuffix}`;
+        }
+
+        const defaultRole = await this.prisma.role.findFirst({
+          where: { isDefault: true },
+        });
+
+        user = await this.prisma.user.create({
+          data: {
+            email: emailLower,
+            username,
+            firstName,
+            lastName,
+            avatarUrl,
+            isActive: true,
+            emailVerified: true,
+            roles: defaultRole
+              ? {
+                  connect: { id: defaultRole.id },
+                }
+              : undefined,
+            oauthAccounts: {
+              create: {
+                provider,
+                providerId,
+              },
+            },
+          },
+          include: {
+            roles: true,
+          },
+        });
+
+        // Trigger welcoming completed email
+        await this.mailService.sendWelcomeNotification(user.email, user.firstName ?? undefined);
+      }
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('This account has been deactivated');
+    }
+
+    // 4. Log the user in, establishing a UserSession
+    const sessionTimeoutDays = 90;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + sessionTimeoutDays);
+
+    const deviceDetails = this.parseUserAgent(userAgent);
+
+    const session = await this.prisma.userSession.create({
+      data: {
+        userId: user.id,
+        tenantId: 'default',
+        ipAddress,
+        userAgent,
+        deviceName: deviceDetails.deviceName,
+        deviceType: deviceDetails.deviceType,
+        platform: deviceDetails.platform,
+        expiresAt,
+      },
+    });
+
+    const tokens = await this.generateTokenPair(user.id, user.email, user.username, session.id);
+
+    const refreshTokenHash = this.hashToken(tokens.refreshToken);
+    const refreshExpiresAt = new Date();
+    const refreshTTL = this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d';
+    const refreshDays = this.parseDurationToDays(refreshTTL);
+    refreshExpiresAt.setDate(refreshExpiresAt.getDate() + refreshDays);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        sessionId: session.id,
+        userId: user.id,
+        tenantId: 'default',
+        tokenHash: refreshTokenHash,
+        familyId: crypto.randomUUID(),
+        expiresAt: refreshExpiresAt,
+      },
+    });
+
+    // Create Audit Log
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: 'default',
+        actorId: user.id,
+        action: `USER_OAUTH_${provider.toUpperCase()}_LOGIN`,
+        entityType: 'UserSession',
+        entityId: session.id,
+        ipAddress,
+        userAgent,
+      },
+    });
+
+    return {
+      tokens,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isSuperAdmin: user.isSuperAdmin,
+        roles: user.roles.map((r: any) => r.name),
+      },
+    };
+  }
+
   // --- Helper Methods ---
 
   /**

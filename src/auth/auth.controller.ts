@@ -14,6 +14,7 @@ import { RefreshDto } from './dto/refresh.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordVerifyDto } from './dto/reset-password-verify.dto';
 import { ResetPasswordCompleteDto } from './dto/reset-password-complete.dto';
+import { OAuthDto } from './dto/oauth.dto';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 
@@ -137,5 +138,35 @@ export class AuthController {
     const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     const userAgent = req.headers?.['user-agent'];
     return this.authService.resetPasswordComplete(dto, ipAddress, userAgent);
+  }
+
+  @Public()
+  @Post('oauth/google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Authenticate a user via Google Single Sign-On (SSO) code token exchange' })
+  @ApiResponse({ status: 200, description: 'Authentication successful, login session tokens returned' })
+  @ApiResponse({ status: 401, description: 'Invalid Google authorization code or exchange failure' })
+  async googleLogin(
+    @Body() dto: OAuthDto,
+    @Req() req: any,
+  ) {
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    const userAgent = req.headers?.['user-agent'];
+    return this.authService.googleLogin(dto.code, ipAddress, userAgent);
+  }
+
+  @Public()
+  @Post('oauth/github')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Authenticate a user via GitHub Single Sign-On (SSO) code token exchange' })
+  @ApiResponse({ status: 200, description: 'Authentication successful, login session tokens returned' })
+  @ApiResponse({ status: 401, description: 'Invalid GitHub authorization code or exchange failure' })
+  async githubLogin(
+    @Body() dto: OAuthDto,
+    @Req() req: any,
+  ) {
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    const userAgent = req.headers?.['user-agent'];
+    return this.authService.githubLogin(dto.code, ipAddress, userAgent);
   }
 }
