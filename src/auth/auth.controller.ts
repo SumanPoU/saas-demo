@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -15,6 +16,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordVerifyDto } from './dto/reset-password-verify.dto';
 import { ResetPasswordCompleteDto } from './dto/reset-password-complete.dto';
 import { OAuthDto } from './dto/oauth.dto';
+import { ResendOtpDto } from './dto/resend-otp.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 
@@ -32,6 +35,16 @@ export class AuthController {
   @ApiResponse({ status: 409, description: 'Email address already in use' })
   async registerInitiate(@Body() dto: InitiateRegisterDto) {
     return this.authService.registerInitiate(dto);
+  }
+
+  @Public()
+  @Post('register/resend-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Step 1.5: Resend a fresh email verification OTP code' })
+  @ApiResponse({ status: 200, description: 'New verification OTP sent successfully' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  async resendOtp(@Body() dto: ResendOtpDto) {
+    return this.authService.resendOtp(dto);
   }
 
   @Public()
@@ -168,5 +181,32 @@ export class AuthController {
     const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     const userAgent = req.headers?.['user-agent'];
     return this.authService.githubLogin(dto.code, ipAddress, userAgent);
+  }
+
+
+
+  @ApiBearerAuth('JWT')
+  @Get('profile')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get the profile information of the currently authenticated user' })
+  @ApiResponse({ status: 200, description: 'User profile retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getProfile(@CurrentUser() user: any) {
+    return this.authService.getProfile(user.id);
+  }
+
+  @ApiBearerAuth('JWT')
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change the password for the currently authenticated user' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully, current session remains active' })
+  @ApiResponse({ status: 400, description: 'Password confirmation mismatch' })
+  @ApiResponse({ status: 401, description: 'Unauthorized or current password incorrect' })
+  async changePassword(
+    @CurrentUser() user: any,
+    @Req() req: any,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(user.id, user.sessionId, dto);
   }
 }

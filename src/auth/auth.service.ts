@@ -13,6 +13,8 @@ import { RefreshDto } from './dto/refresh.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordVerifyDto } from './dto/reset-password-verify.dto';
 import { ResetPasswordCompleteDto } from './dto/reset-password-complete.dto';
+import { ResendOtpDto } from './dto/resend-otp.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -1017,6 +1019,178 @@ export class AuthService {
         isSuperAdmin: user.isSuperAdmin,
         roles: user.roles.map((r: any) => r.name),
       },
+    };
+  }
+
+  /**
+   * Resend a fresh email verification OTP code to a pending user registration.
+   */
+  async resendOtp(dto: ResendOtpDto) {
+    const emailLower = dto.email.toLowerCase();
+
+    // Query user by email
+    const user = await this.prisma.user.findUnique({
+      where: { email: emailLower },
+    });
+
+    // Security best practice: return success confirmation generic message even if email is not found
+    if (!user) {
+      return {
+        success: true,
+        message: 'If this email address is registered in a pending state, a fresh verification OTP has been sent.',
+      };
+    }
+
+    // If user is already active, prevent OTP spamming
+    if (user.isActive || user.passwordHash) {
+      throw new BadRequestException('This email address is already fully registered and verified. Please log in.');
+    }
+
+    // Revoke any existing active unused verification tokens for this user
+    await this.prisma.emailVerificationToken.updateMany({
+      where: {
+        userId: user.id,
+        isUsed: false,
+      },
+      data: {
+        isUsed: true,
+        usedAt: new Date(),
+      },
+    });
+
+    // Generate a fresh 6-digit numeric OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const tokenHash = crypto.createHash('sha256').update(otp).digest('hex');
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour TTL
+
+    // Store in database
+    await this.prisma.emailVerificationToken.create({
+      data: {
+        userId: user.id,
+        tenantId: 'default',
+        email: user.email,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    // Send real email containing verification OTP code
+    await this.mailService.sendRegistrationOtp(user.email, otp);
+
+    // Print verification code to console logs strictly for local developers
+    console.log(`\n=========================================\n🌱 [RESEND OTP] sent to ${user.email}: \n👉 CODE: ${otp}\n=========================================\n`);
+
+    return {
+      success: true,
+      message: 'If this email address is registered in a pending state, a fresh verification OTP has been sent.',
+    };
+  }
+
+  /**
+   * Fetch user profile from the database.
+   */
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        roles: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User account not found');
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+      isActive: user.isActive,
+      isSuperAdmin: user.isSuperAdmin,
+      roles: user.roles.map((r) => r.name),
+    };
+  }
+
+  /**
+   * Change user password from within active authenticated session.
+   * Forces revocation on all other devices except the current active session.
+   */
+  async changePassword(userId: string, currentSessionId: string, dto: ChangePasswordDto) {
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User account not found');
+    }
+
+    // Verify current password if user has credentials (optional for SSO users who haven't set a password yet)
+    if (user.passwordHash) {
+      const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Incorrect current password');
+      }
+    }
+
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(dto.newPassword, saltRounds);
+
+    // Save new password in database
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    // Revoke all other active sessions EXCEPT the current one (excellent security hygiene)
+    await this.prisma.userSession.updateMany({
+      where: {
+        userId: user.id,
+        id: { not: currentSessionId },
+        isRevoked: false,
+      },
+      data: {
+        isRevoked: true,
+        revokedAt: new Date(),
+      },
+    });
+
+    await this.prisma.refreshToken.updateMany({
+      where: {
+        userId: user.id,
+        sessionId: { not: currentSessionId },
+        isRevoked: false,
+      },
+      data: {
+        isRevoked: true,
+        revokedAt: new Date(),
+      },
+    });
+
+    // Trigger password reset alert email notification
+    await this.mailService.sendPasswordResetSuccessNotification(user.email, user.firstName ?? undefined);
+
+    // Create Audit Log
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: 'default',
+        actorId: user.id,
+        action: 'USER_CHANGE_PASSWORD',
+        entityType: 'User',
+        entityId: user.id,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Password successfully updated. All other active sessions have been revoked.',
     };
   }
 
