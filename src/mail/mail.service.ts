@@ -157,4 +157,27 @@ export class MailService {
     `;
     await this.sendEmail(to, subject, text, html);
   }
+
+  /**
+   * Outbox Helper 6: Send New Device Verification Link
+   */
+  async sendDeviceVerificationLink(to: string, verifyLink: string) {
+    const subject = 'Authorize New Device Login';
+    const text = `Authorize your new device by clicking this link: ${verifyLink}`;
+    const html = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #eef2f6; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #4f46e5; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Authorize New Device</h2>
+        <p>Hello,</p>
+        <p>We detected a login attempt from a new device or browser. To authorize this device to log in to your account, please click the button below:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verifyLink}" style="background-color: #4f46e5; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Authorize Device</a>
+        </div>
+        <p style="color: #64748b; font-size: 14px;">This link is valid for <strong>15 minutes</strong>. If you did not attempt to log in, please secure your account immediately.</p>
+        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">&copy; ${new Date().getFullYear()} SaaS Demo. All rights reserved.</p>
+      </div>
+    `;
+    await this.sendEmail(to, subject, text, html);
+  }
 }
+

@@ -13,6 +13,7 @@ import { AppLoggerModule } from './logger/logger.module';
 import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { MfaModule } from './mfa/mfa.module';
 import { AuthGuard } from './auth/guards/auth.guard';
 import { AuthMiddleware } from './auth/middlewares/auth.middleware';
 import { MailModule } from './mail/mail.module';
@@ -28,6 +29,7 @@ import { MailModule } from './mail/mail.module';
     TerminusModule,
     PrismaModule,
     AuthModule,
+    MfaModule,
     MailModule,
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],

@@ -54,4 +54,11 @@ export default () => ({
       limit: parseInt(process.env.THROTTLE_LONG_LIMIT ?? '100', 10),
     },
   },
+
+  mfa: {
+    encryptionKey: process.env.MFA_ENCRYPTION_KEY,
+    pendingTokenExpiry: process.env.MFA_PENDING_TOKEN_EXPIRY ?? '5m',
+  },
+  appName: process.env.APP_NAME ?? 'SaaS_Enterprise_Demo',
+  frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
 });

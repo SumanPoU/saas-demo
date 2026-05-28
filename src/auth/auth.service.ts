@@ -3,6 +3,8 @@ import {
   ConflictException,
   Injectable,
   UnauthorizedException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -282,7 +284,101 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    // Create a new UserSession
+    // 1. New Device Detection
+    const activeSessions = await this.prisma.userSession.findMany({
+      where: { userId: user.id, isRevoked: false },
+    });
+
+    const currentDeviceDetails = this.parseUserAgent(userAgent);
+    const isDeviceRecognized = activeSessions.some((s) => {
+      return (
+        s.userAgent === userAgent ||
+        (s.platform === currentDeviceDetails.platform &&
+          s.deviceType === currentDeviceDetails.deviceType)
+      );
+    });
+
+    // Verify new device (only if user has existing recognized sessions)
+    if (!isDeviceRecognized && activeSessions.length > 0) {
+      // Check if user has recently verified a device verification link (within last 15 minutes)
+      const recentVerifiedToken = await this.prisma.emailVerificationToken.findFirst({
+        where: {
+          userId: user.id,
+          isUsed: true,
+          usedAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+        },
+      });
+
+      if (!recentVerifiedToken) {
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes TTL
+
+        await this.prisma.emailVerificationToken.create({
+          data: {
+            userId: user.id,
+            tenantId: 'default',
+            email: user.email,
+            tokenHash,
+            expiresAt,
+          },
+        });
+
+        const frontendUrl = this.configService.get<string>('frontendUrl') ?? 'http://localhost:3000';
+        const verifyLink = `${frontendUrl}/auth/verify-device?token=${rawToken}`;
+        
+        await this.mailService.sendDeviceVerificationLink(user.email, verifyLink);
+
+        // Print to console log for local development
+        console.log(`\n=========================================\n📬 [NEW DEVICE VERIFICATION LINK]: \n👉 LINK: ${verifyLink}\n=========================================\n`);
+
+        throw new HttpException(
+          {
+            success: false,
+            requiresDeviceVerification: true,
+            message: 'New device detected. Check your email to authorize.',
+          },
+          HttpStatus.ACCEPTED,
+        );
+      }
+    }
+
+    // 2. Multi-Factor Authentication Check
+    const mfaConfig = await this.prisma.mfaConfig.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (mfaConfig && mfaConfig.isEnabled) {
+      const mfaExpiry = this.configService.get<string>('mfa.pendingTokenExpiry') ?? '5m';
+      const mfaPendingToken = await this.jwtService.signAsync(
+        { sub: user.id, type: 'mfa_pending' },
+        {
+          secret: this.configService.get<string>('jwt.secret'),
+          expiresIn: mfaExpiry as any,
+        },
+      );
+
+      return {
+        success: false,
+        requiresMfa: true,
+        mfaPendingToken,
+        message: 'MFA verification required to complete login.',
+      } as any;
+    }
+
+    // 3. Normal Login Session Creation and Token Issuance
+    return this.establishSessionAndIssueTokens(user, ipAddress, userAgent);
+  }
+
+  /**
+   * Establish a session and issue access/refresh token pair.
+   * Shared between standard credential logins and MFA logins.
+   */
+  public async establishSessionAndIssueTokens(
+    user: any,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     const sessionTimeoutDays = 90;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + sessionTimeoutDays);
@@ -346,7 +442,7 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         isSuperAdmin: user.isSuperAdmin,
-        roles: user.roles.map((r) => r.name),
+        roles: user.roles.map((r: any) => r.name),
       },
     };
   }

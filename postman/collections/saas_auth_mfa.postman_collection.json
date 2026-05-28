@@ -1,0 +1,868 @@
+{
+  "info": {
+    "_postman_id": "4b6a8277-2eef-4171-aa3a-592f4c3b53c1",
+    "name": "SaaS Enterprise Auth & MFA API",
+    "description": "Comprehensive Postman collection for testing the NestJS enterprise authentication system, including standard multi-step registration, credentials and OAuth SSO login, device verification, token rotation, and TOTP-based Multi-Factor Authentication.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication & Registration",
+      "item": [
+        {
+          "name": "Step 1: Initiate Registration",
+          "id": "54d9b9d2-0648-4b3b-aa08-d05ea35fc267",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test-mfa-user@example.com\",\n  \"firstName\": \"Mfa\",\n  \"lastName\": \"User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/register/initiate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "register",
+                "initiate"
+              ]
+            },
+            "description": "Step 1 of the multi-step registration flow. Generates a pending inactive user and triggers an email verification OTP code."
+          },
+          "response": []
+        },
+        {
+          "name": "Step 1.5: Resend Verification OTP",
+          "id": "12131871-031e-4ce9-bca1-14755bc5246a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test-mfa-user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/register/resend-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "register",
+                "resend-otp"
+              ]
+            },
+            "description": "Resends a fresh 6-digit email verification OTP code to the pending registration session."
+          },
+          "response": []
+        },
+        {
+          "name": "Step 2: Verify Registration OTP",
+          "id": "b17b22dd-6784-4f43-b54d-b179cc459f8a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test-mfa-user@example.com\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/register/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "register",
+                "verify-otp"
+              ]
+            },
+            "description": "Verifies the 6-digit registration OTP code, marking the email as verified."
+          },
+          "response": []
+        },
+        {
+          "name": "Step 3: Complete Registration",
+          "id": "07e6cdbd-1b24-48b2-aed2-aa40954f66ef",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test-mfa-user@example.com\",\n  \"code\": \"123456\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/register/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "register",
+                "complete"
+              ]
+            },
+            "description": "Step 3 of registration. Sets the account password and fully activates the user. Requires manual login afterwards (no tokens are issued)."
+          },
+          "response": []
+        },
+        {
+          "name": "Standard Credentials Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "a66b9939-e177-4f7d-9bd3-ba324f89d909",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (pm.response.code === 200 && response.success && response.data) {",
+                  "    if (response.data.accessToken) {",
+                  "        pm.environment.set(\"accessToken\", response.data.accessToken);",
+                  "        pm.environment.set(\"refreshToken\", response.data.refreshToken);",
+                  "        pm.environment.set(\"mfaPendingToken\", \"\");",
+                  "        console.log(\"Access & Refresh tokens captured successfully!\");",
+                  "    } else if (response.data.requiresMfa && response.data.mfaPendingToken) {",
+                  "        pm.environment.set(\"mfaPendingToken\", response.data.mfaPendingToken);",
+                  "        console.log(\"Captured short-lived mfaPendingToken. Proceed to complete login at mid-login verification endpoint!\");",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "8e68acec-aec4-4e8a-aa0e-a4f57b7bed64",
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "id": "989e9358-f871-4294-b841-a68aace6d506",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"user@demo.com\",\n  \"password\": \"UserPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Standard login with credentials. If MFA is active, this returns a 200 OK with `requiresMfa: true` and an `mfaPendingToken`. If a new device is detected, it triggers a device verification link and returns a 202 Accepted status."
+          },
+          "response": []
+        },
+        {
+          "name": "JWT Token Refresh (RTR)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (pm.response.code === 200 && response.success && response.data && response.data.tokens) {",
+                  "    pm.environment.set(\"accessToken\", response.data.tokens.accessToken);",
+                  "    pm.environment.set(\"refreshToken\", response.data.tokens.refreshToken);",
+                  "    console.log(\"Rotated token pair captured successfully!\");",
+                  "}"
+                ],
+                "type": "javascript"
+              }
+            }
+          ],
+          "id": "58713bca-8ffe-4e69-8e3e-7df8deb994bb",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Rotates current active JWT access and refresh token pair using Refresh Token Rotation (RTR) replay/reuse prevention logic."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch My Profile",
+          "id": "6aea9a7a-aa0b-462f-81a8-bbe6217fc068",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "Fetch details of the currently authenticated active session."
+          },
+          "response": []
+        },
+        {
+          "name": "Change My Password",
+          "id": "63f28d61-00d2-48df-9917-93f288377454",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"Password123!\",\n  \"newPassword\": \"NewPassword123!\",\n  \"confirmPassword\": \"NewPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Allows changing password from inside active authenticated session. Triggers database force revocation on all other sessions."
+          },
+          "response": []
+        },
+        {
+          "name": "Initiate Forgot Password",
+          "id": "9e158a9b-4550-4925-97bd-e3f24e8c106f",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"test-mfa-user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "Password recovery Step 1: Searches user and dispatches password recovery OTP code email (preventing user enumeration leaks)."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Forgot Password OTP",
+          "id": "aecde094-a51b-4063-a82e-008862c7f2eb",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"test-mfa-user@example.com\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/reset-password/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "reset-password",
+                "verify"
+              ]
+            },
+            "description": "Password recovery Step 2: Validates reset OTP code, returning success without tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Forgot Password Reset",
+          "id": "bcc0ead4-e53a-4c00-8fef-4e1326800759",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"test-mfa-user@example.com\",\n  \"code\": \"123456\",\n  \"password\": \"NewPassword123!\",\n  \"confirmPassword\": \"NewPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/reset-password/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "reset-password",
+                "complete"
+              ]
+            },
+            "description": "Password recovery Step 3: Hashes new password and terminates all active sessions across all devices."
+          },
+          "response": []
+        },
+        {
+          "name": "Google OAuth SSO Exchange",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (pm.response.code === 200 && response.success && response.data && response.data.tokens) {",
+                  "    pm.environment.set(\"accessToken\", response.data.tokens.accessToken);",
+                  "    pm.environment.set(\"refreshToken\", response.data.tokens.refreshToken);",
+                  "}"
+                ],
+                "type": "javascript"
+              }
+            }
+          ],
+          "id": "a89d1639-c90c-48ed-8eaa-2d5c64b64cd6",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"mock-google-code\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/oauth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "oauth",
+                "google"
+              ]
+            },
+            "description": "Google Single Sign-On (SSO) OAuth callback code exchange with auto-registration, multi-provider mapping linking, and mock bypass flags for offline local dev tests."
+          },
+          "response": []
+        },
+        {
+          "name": "GitHub OAuth SSO Exchange",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (pm.response.code === 200 && response.success && response.data && response.data.tokens) {",
+                  "    pm.environment.set(\"accessToken\", response.data.tokens.accessToken);",
+                  "    pm.environment.set(\"refreshToken\", response.data.tokens.refreshToken);",
+                  "}"
+                ],
+                "type": "javascript"
+              }
+            }
+          ],
+          "id": "7693248f-85e1-42f3-ac1a-cca4cdb4d221",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"mock-github-code\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/oauth/github",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "oauth",
+                "github"
+              ]
+            },
+            "description": "GitHub Single Sign-On (SSO) OAuth callback code exchange with auto-registration, multi-provider mapping linking, and mock bypass flags for offline local dev tests."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.environment.set(\"accessToken\", \"\");",
+                  "    pm.environment.set(\"refreshToken\", \"\");",
+                  "    pm.environment.set(\"mfaPendingToken\", \"\");",
+                  "    console.log(\"Cleared Postman tokens on logout complete.\");",
+                  "}"
+                ],
+                "type": "javascript"
+              }
+            }
+          ],
+          "id": "4cbb43dc-af61-4e46-ad2a-f5a0df410922",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Logout the active user session. Revokes the session in the database and invalidates associated refresh tokens."
+          },
+          "response": []
+        }
+      ],
+      "id": "8dff1412-44b0-4eef-b79d-3b46c6f6658d",
+      "description": "Core authentication endpoints."
+    },
+    {
+      "name": "2. Multi-Factor Authentication (MFA)",
+      "item": [
+        {
+          "name": "MFA Setup (Initiate)",
+          "id": "304c706b-ecfa-4e65-9182-2a42ce756c87",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/mfa/setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "setup"
+              ]
+            },
+            "description": "MFA Step 1: Protected JWT request to initiate TOTP setup. Encrypts the derived base32 secret in the database and returns a Base64 encoded QR Code data URL."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify MFA Setup (Enable)",
+          "id": "da9b8f81-ce7c-4570-aa8c-21494524aa7c",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"555604\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/mfa/verify-setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "verify-setup"
+              ]
+            },
+            "description": "MFA Step 2: Validates the TOTP authenticator code, fully enables MFA on the account, and returns 8 bcrypt-hashed backup codes *once*."
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Login (Verify MFA Login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "71909fb1-45f3-411a-b6b4-7fb6ab9194a0",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (pm.response.code === 200 && response.success && response.data) {",
+                  "    pm.environment.set(\"accessToken\", response.data.accessToken);",
+                  "    pm.environment.set(\"refreshToken\", response.data.refreshToken);",
+                  "    pm.environment.set(\"mfaPendingToken\", \"\");",
+                  "    console.log(\"MFA Verification Successful! Authorized Session Tokens captured.\");",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "a12b7537-8e15-4cb5-a8a5-5f702de7407c",
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "id": "e2a3d109-61a9-4423-ac5a-823472d73e12",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mfaPendingToken\": \"{{mfaPendingToken}}\",\n  \"code\": \"282007\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/mfa/verify-login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "verify-login"
+              ]
+            },
+            "description": "Completes standard logins when MFA is active. Accepts the short-lived `mfaPendingToken` combined with either a 6-digit TOTP code or an 8-character single-use backup code. Returns active JWT session tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "Authorize New Device Verification Link",
+          "id": "749e4498-c50c-4670-96e8-d0d4015102c4",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"5e499ed7695cef776adfdfcedf092e2f2162f3c927dcdcae35ba798216ede451\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/mfa/verify-device",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "verify-device"
+              ]
+            },
+            "description": "Public endpoint confirming the email token link generated when standard logins detect an unrecognized userAgent/device details."
+          },
+          "response": []
+        },
+        {
+          "name": "Regenerate Backup Codes",
+          "id": "487af23e-beec-479b-8bb6-da4708febaf3",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/mfa/backup-codes/regenerate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "backup-codes",
+                "regenerate"
+              ]
+            },
+            "description": "Requires a valid TOTP code to confirm authorization, purges old backup codes, and returns 8 fresh new ones."
+          },
+          "response": []
+        },
+        {
+          "name": "Disable MFA",
+          "id": "52e9dafc-bfa1-4bfb-a9e3-31181dacf4b7",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"540469\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/mfa/disable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "disable"
+              ]
+            },
+            "description": "Deactivates Multi-Factor Authentication. Requires a valid TOTP confirmation code and terminates all backup codes."
+          },
+          "response": []
+        },
+        {
+          "name": "MFA Account Recovery Step 1: Request Link",
+          "id": "167dade9-989c-4983-ad85-345558843673",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test-mfa-user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/mfa/recover",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "recover"
+              ]
+            },
+            "description": "Step 1 of MFA account recovery. Generates a secure recovery token and dispatches an email containing the link to disable MFA (preventing user enumeration leaks)."
+          },
+          "response": []
+        },
+        {
+          "name": "MFA Account Recovery Step 2: Confirm Link",
+          "id": "bf88ec9b-1e5e-4264-9137-eef9dd75d3d1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"raw-mfa-recovery-token\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/mfa/recover/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "recover",
+                "verify"
+              ]
+            },
+            "description": "Step 2 of MFA account recovery. Validates the emailed recovery link token, dispatches deactivation, and purges MFA settings on the user account."
+          },
+          "response": []
+        }
+      ],
+      "id": "95c5968c-ebf9-4b7f-b177-24418b463a57",
+      "description": "Endpoints relating to Multi-Factor Authentication controls."
+    }
+  ]
+}
