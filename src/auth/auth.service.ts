@@ -192,15 +192,12 @@ export class AuthService {
       where: {
         userId: user.id,
         tokenHash,
+        isUsed: true,
       },
     });
 
     if (!verificationToken) {
       throw new UnauthorizedException('Invalid or expired email verification code');
-    }
-
-    if (verificationToken.expiresAt < new Date()) {
-      throw new UnauthorizedException('Email verification code has expired');
     }
 
     const saltRounds = 10;
@@ -216,6 +213,7 @@ export class AuthService {
       where: { id: user.id },
       data: {
         passwordHash,
+        passwordChangedAt: new Date(),
         isActive: true,
         emailVerified: true,
         roles: defaultRole
@@ -306,6 +304,7 @@ export class AuthService {
           userId: user.id,
           isUsed: true,
           usedAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+          purpose: 'device_verify',
         },
       });
 
@@ -321,6 +320,7 @@ export class AuthService {
             email: user.email,
             tokenHash,
             expiresAt,
+            purpose: 'device_verify',
           },
         });
 
@@ -344,27 +344,8 @@ export class AuthService {
     }
 
     // 2. Multi-Factor Authentication Check
-    const mfaConfig = await this.prisma.mfaConfig.findUnique({
-      where: { userId: user.id },
-    });
-
-    if (mfaConfig && mfaConfig.isEnabled) {
-      const mfaExpiry = this.configService.get<string>('mfa.pendingTokenExpiry') ?? '5m';
-      const mfaPendingToken = await this.jwtService.signAsync(
-        { sub: user.id, type: 'mfa_pending' },
-        {
-          secret: this.configService.get<string>('jwt.secret'),
-          expiresIn: mfaExpiry as any,
-        },
-      );
-
-      return {
-        success: false,
-        requiresMfa: true,
-        mfaPendingToken,
-        message: 'MFA verification required to complete login.',
-      } as any;
-    }
+    const mfaResult = await this.checkMfaRequired(user);
+    if (mfaResult) return mfaResult as any;
 
     // 3. Normal Login Session Creation and Token Issuance
     return this.establishSessionAndIssueTokens(user, ipAddress, userAgent);
@@ -517,6 +498,25 @@ export class AuthService {
 
     if (!storedToken.user.isActive) {
       throw new UnauthorizedException('This account has been deactivated');
+    }
+
+    const passwordChangedAt = storedToken.user.passwordChangedAt;
+    if (passwordChangedAt && storedToken.session.createdAt < passwordChangedAt) {
+      await this.prisma.refreshToken.updateMany({
+        where: { familyId: storedToken.familyId },
+        data: { isRevoked: true, revokedAt: new Date() },
+      });
+      await this.prisma.userSession.update({
+        where: { id: storedToken.sessionId },
+        data: {
+          isRevoked: true,
+          revokedAt: new Date(),
+          revokedBy: storedToken.userId,
+        },
+      });
+      throw new UnauthorizedException(
+        'Session invalidated due to password change. Please log in again.',
+      );
     }
 
     await this.prisma.refreshToken.update({
@@ -754,7 +754,7 @@ export class AuthService {
     // Save new password in database
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash },
+      data: { passwordHash, passwordChangedAt: new Date() },
     });
 
     // FORCE REVOCATION on all existing sessions (security best practice)
@@ -799,7 +799,11 @@ export class AuthService {
   /**
    * Google OAuth code exchange and user authentication.
    */
-  async googleLogin(code: string, ipAddress?: string, userAgent?: string) {
+  async googleLogin(code: string, state?: string, expectedState?: string, ipAddress?: string, userAgent?: string) {
+    if (state !== undefined && expectedState !== undefined && state !== expectedState) {
+      throw new UnauthorizedException('OAuth state mismatch. Possible CSRF attack.');
+    }
+
     let email = '';
     let providerId = '';
     let firstName = '';
@@ -862,7 +866,11 @@ export class AuthService {
   /**
    * GitHub OAuth code exchange and user authentication.
    */
-  async githubLogin(code: string, ipAddress?: string, userAgent?: string) {
+  async githubLogin(code: string, state?: string, expectedState?: string, ipAddress?: string, userAgent?: string) {
+    if (state !== undefined && expectedState !== undefined && state !== expectedState) {
+      throw new UnauthorizedException('OAuth state mismatch. Possible CSRF attack.');
+    }
+
     let email = '';
     let providerId = '';
     let name = '';
@@ -1051,6 +1059,9 @@ export class AuthService {
     if (!user.isActive) {
       throw new UnauthorizedException('This account has been deactivated');
     }
+
+    const mfaResult = await this.checkMfaRequired(user);
+    if (mfaResult) return mfaResult as any;
 
     // 4. Log the user in, establishing a UserSession
     const sessionTimeoutDays = 90;
@@ -1242,7 +1253,7 @@ export class AuthService {
     // Save new password in database
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash },
+      data: { passwordHash, passwordChangedAt: new Date() },
     });
 
     // Revoke all other active sessions EXCEPT the current one (excellent security hygiene)
@@ -1291,6 +1302,27 @@ export class AuthService {
   }
 
   // --- Helper Methods ---
+
+  private async checkMfaRequired(user: any): Promise<any | null> {
+    const mfaConfig = await this.prisma.mfaConfig.findUnique({
+      where: { userId: user.id },
+    });
+    if (!mfaConfig || !mfaConfig.isEnabled) return null;
+    const mfaExpiry = this.configService.get<string>('mfa.pendingTokenExpiry') ?? '5m';
+    const mfaPendingToken = await this.jwtService.signAsync(
+      { sub: user.id, type: 'mfa_pending' },
+      {
+        secret: this.configService.get<string>('jwt.secret'),
+        expiresIn: mfaExpiry as any,
+      },
+    );
+    return {
+      success: false,
+      requiresMfa: true,
+      mfaPendingToken,
+      message: 'MFA verification required to complete login.',
+    };
+  }
 
   /**
    * Hash a JWT token using SHA-256.

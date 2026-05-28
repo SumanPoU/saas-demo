@@ -1,10 +1,12 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(AuthMiddleware.name);
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -27,6 +29,11 @@ export class AuthMiddleware implements NestMiddleware {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: this.configService.get<string>('jwt.secret'),
       });
+
+      if (payload.type === 'mfa_pending') {
+        this.logger.warn(`Blocked mfa_pending token attempt for sub=${payload.sub}`);
+        return next();
+      }
 
       // 2. Validate user and session existence and status
       const session = await this.prisma.userSession.findUnique({
@@ -52,6 +59,14 @@ export class AuthMiddleware implements NestMiddleware {
         return next();
       }
 
+      if (
+        user.passwordChangedAt &&
+        payload.iat * 1000 < user.passwordChangedAt.getTime()
+      ) {
+        this.logger.debug(`Token predates password change for userId=${user.id}`);
+        return next();
+      }
+
       // 3. Extract roles and flat permissions
       const roles = user.roles.map((r) => r.name);
       const permissions = Array.from(
@@ -67,6 +82,7 @@ export class AuthMiddleware implements NestMiddleware {
         roles,
         permissions,
         sessionId: session.id,
+        tenantId: session.tenantId,
       };
 
       req.user = requestUser;
@@ -77,6 +93,7 @@ export class AuthMiddleware implements NestMiddleware {
       }
     } catch (error) {
       // We do not throw exceptions in middleware to support public routes gracefully
+      this.logger.debug(`Auth token validation failed: ${(error as Error).message}`);
     }
 
     next();

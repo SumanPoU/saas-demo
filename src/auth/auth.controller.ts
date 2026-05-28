@@ -165,7 +165,7 @@ export class AuthController {
   ) {
     const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     const userAgent = req.headers?.['user-agent'];
-    return this.authService.googleLogin(dto.code, ipAddress, userAgent);
+    return this.authService.googleLogin(dto.code, dto.state, dto.expectedState, ipAddress, userAgent);
   }
 
   @Public()
@@ -180,7 +180,7 @@ export class AuthController {
   ) {
     const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     const userAgent = req.headers?.['user-agent'];
-    return this.authService.githubLogin(dto.code, ipAddress, userAgent);
+    return this.authService.githubLogin(dto.code, dto.state, dto.expectedState, ipAddress, userAgent);
   }
 
 

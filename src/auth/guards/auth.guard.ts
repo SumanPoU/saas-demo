@@ -3,9 +3,12 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { ROLES_KEY } from '../decorators/roles.decorator';
+import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -28,6 +31,34 @@ export class AuthGuard implements CanActivate {
 
     if (!user) {
       throw new UnauthorizedException('Authentication token is missing or invalid');
+    }
+
+    if (!user.sessionId) {
+      throw new UnauthorizedException('Session context is missing. Please log in again.');
+    }
+
+    // Role enforcement
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (requiredRoles?.length && !user.isSuperAdmin) {
+      const hasRole = requiredRoles.some((r) => user.roles?.includes(r));
+      if (!hasRole) {
+        throw new ForbiddenException('You do not have the required role to access this resource.');
+      }
+    }
+
+    // Permission enforcement (AND logic — user must hold ALL listed permissions)
+    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (requiredPermissions?.length && !user.isSuperAdmin) {
+      const hasAll = requiredPermissions.every((p) => user.permissions?.includes(p));
+      if (!hasAll) {
+        throw new ForbiddenException('You do not have sufficient permissions to access this resource.');
+      }
     }
 
     return true;

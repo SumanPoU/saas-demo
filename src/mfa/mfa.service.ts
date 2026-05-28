@@ -18,6 +18,8 @@ import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class MfaService {
+  private readonly usedTotpCodes = new Map<string, number>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -128,6 +130,10 @@ export class MfaService {
       throw new NotFoundException('MFA configuration has not been initiated.');
     }
 
+    if (this.isTotpCodeUsed(userId, code)) {
+      throw new UnauthorizedException('TOTP code has already been used. Wait for the next code.');
+    }
+
     const decryptedSecret = this.decrypt(mfaConfig.totpSecret);
     const isValid = authenticator.verify({
       token: code,
@@ -137,21 +143,11 @@ export class MfaService {
     if (!isValid) {
       throw new UnauthorizedException('Invalid or expired TOTP code');
     }
+    this.markTotpCodeUsed(userId, code);
 
     // Generate 8 backup codes (8-character uppercase hex strings)
-    const backupCodes: string[] = [];
-    const hashedCodesData: { codeHash: string; mfaConfigId: string }[] = [];
-
-    for (let i = 0; i < 8; i++) {
-      const rawCode = crypto.randomBytes(4).toString('hex').toUpperCase();
-      backupCodes.push(rawCode);
-
-      const codeHash = await bcrypt.hash(rawCode, 10);
-      hashedCodesData.push({
-        codeHash,
-        mfaConfigId: mfaConfig.id,
-      });
-    }
+    const { plainCodes: backupCodes, hashedData: hashedCodesData } =
+      await this.buildBackupCodes(mfaConfig.id);
 
     // Set enabled and delete/replace backup codes
     await this.prisma.$transaction([
@@ -203,6 +199,10 @@ export class MfaService {
       throw new BadRequestException('MFA must be active to regenerate backup codes.');
     }
 
+    if (this.isTotpCodeUsed(userId, code)) {
+      throw new UnauthorizedException('TOTP code has already been used. Wait for the next code.');
+    }
+
     const decryptedSecret = this.decrypt(mfaConfig.totpSecret);
     const isValid = authenticator.verify({
       token: code,
@@ -212,20 +212,10 @@ export class MfaService {
     if (!isValid) {
       throw new UnauthorizedException('Invalid or expired TOTP code');
     }
+    this.markTotpCodeUsed(userId, code);
 
-    const backupCodes: string[] = [];
-    const hashedCodesData: { codeHash: string; mfaConfigId: string }[] = [];
-
-    for (let i = 0; i < 8; i++) {
-      const rawCode = crypto.randomBytes(4).toString('hex').toUpperCase();
-      backupCodes.push(rawCode);
-
-      const codeHash = await bcrypt.hash(rawCode, 10);
-      hashedCodesData.push({
-        codeHash,
-        mfaConfigId: mfaConfig.id,
-      });
-    }
+    const { plainCodes: backupCodes, hashedData: hashedCodesData } =
+      await this.buildBackupCodes(mfaConfig.id);
 
     await this.prisma.$transaction([
       this.prisma.mfaBackupCode.deleteMany({
@@ -295,6 +285,10 @@ export class MfaService {
 
     if (isTotp) {
       // TOTP path
+      if (this.isTotpCodeUsed(userId, cleanedCode)) {
+        throw new UnauthorizedException('TOTP code has already been used. Wait for the next code.');
+      }
+
       const decryptedSecret = this.decrypt(mfaConfig.totpSecret!);
       const isValid = authenticator.verify({
         token: cleanedCode,
@@ -304,9 +298,10 @@ export class MfaService {
       if (!isValid) {
         throw new UnauthorizedException('Invalid TOTP code');
       }
+      this.markTotpCodeUsed(userId, cleanedCode);
     } else {
       // Backup code path (8 chars)
-      if (cleanedCode.length !== 8) {
+      if (cleanedCode.length !== 10) {
         throw new UnauthorizedException('Invalid verification code length.');
       }
 
@@ -402,6 +397,7 @@ export class MfaService {
         tokenHash,
         isUsed: false,
         expiresAt: { gt: new Date() },
+        purpose: 'device_verify',
       },
     });
 
@@ -447,6 +443,10 @@ export class MfaService {
       throw new BadRequestException('MFA is not enabled on this account.');
     }
 
+    if (this.isTotpCodeUsed(userId, code)) {
+      throw new UnauthorizedException('TOTP code has already been used. Wait for the next code.');
+    }
+
     const decryptedSecret = this.decrypt(mfaConfig.totpSecret);
     const isValid = authenticator.verify({
       token: code,
@@ -456,6 +456,7 @@ export class MfaService {
     if (!isValid) {
       throw new UnauthorizedException('Invalid TOTP confirmation code');
     }
+    this.markTotpCodeUsed(userId, code);
 
     await this.prisma.$transaction([
       this.prisma.mfaConfig.update({
@@ -510,7 +511,7 @@ export class MfaService {
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour TTL
 
-    await this.prisma.passwordResetToken.create({
+    await this.prisma.mfaRecoveryToken.create({
       data: {
         userId: user.id,
         tenantId: 'default',
@@ -557,7 +558,7 @@ export class MfaService {
   async verifyRecovery(token: string) {
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
-    const recoveryToken = await this.prisma.passwordResetToken.findFirst({
+    const recoveryToken = await this.prisma.mfaRecoveryToken.findFirst({
       where: {
         tokenHash,
         isUsed: false,
@@ -580,7 +581,7 @@ export class MfaService {
     const mfaConfig = recoveryToken.user.mfaConfig;
 
     await this.prisma.$transaction([
-      this.prisma.passwordResetToken.update({
+      this.prisma.mfaRecoveryToken.update({
         where: { id: recoveryToken.id },
         data: {
           isUsed: true,
@@ -619,5 +620,46 @@ export class MfaService {
       success: true,
       message: 'MFA disabled. Please re-enable on next login.',
     };
+  }
+
+  /**
+   * Helper to check if a TOTP code was recently used.
+   * Prevents replay attacks within the 90-second drift window.
+   */
+  private isTotpCodeUsed(userId: string, code: string): boolean {
+    const key = `${userId}:${code}`;
+    const usedAt = this.usedTotpCodes.get(key);
+    if (!usedAt) return false;
+    if (Date.now() - usedAt > 90_000) {
+      this.usedTotpCodes.delete(key);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Helper to mark a TOTP code as used.
+   * Stores the timestamp in an in-memory cache to prevent immediate reuse.
+   */
+  private markTotpCodeUsed(userId: string, code: string): void {
+    this.usedTotpCodes.set(`${userId}:${code}`, Date.now());
+  }
+
+  /**
+   * Helper to generate cryptographically secure backup codes.
+   * Generates 8 codes, each 10 uppercase hex characters (~40 bits entropy).
+   */
+  private async buildBackupCodes(mfaConfigId: string): Promise<{
+    plainCodes: string[];
+    hashedData: { codeHash: string; mfaConfigId: string }[];
+  }> {
+    const plainCodes: string[] = [];
+    const hashedData: { codeHash: string; mfaConfigId: string }[] = [];
+    for (let i = 0; i < 8; i++) {
+      const rawCode = crypto.randomBytes(5).toString('hex').toUpperCase(); // 10 chars, ~40 bits
+      plainCodes.push(rawCode);
+      hashedData.push({ codeHash: await bcrypt.hash(rawCode, 10), mfaConfigId });
+    }
+    return { plainCodes, hashedData };
   }
 }

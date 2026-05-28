@@ -25,6 +25,7 @@ model User {
   isActive      Boolean   @default(true)
   isSuperAdmin  Boolean   @default(false)
   lastLoginAt   DateTime?
+  passwordChangedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -42,6 +43,7 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   mfaConfig               MfaConfig?
+  mfaRecoveryTokens       MfaRecoveryToken[]
   oauthAccounts           OAuthAccount[]
 
   // Audit
@@ -193,6 +195,7 @@ model EmailVerificationToken {
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenantId String
   email    String // the email being verified (may differ from current user.email)
+  purpose  String @default("email_verify")
 
   tokenHash String    @unique
   isUsed    Boolean   @default(false)
@@ -278,4 +281,21 @@ model OAuthAccount {
 
   @@unique([provider, providerId])
   @@map("oauth_accounts")
+}
+
+model MfaRecoveryToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId  String
+
+  tokenHash String    @unique
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+  @@map("mfa_recovery_tokens")
 }
