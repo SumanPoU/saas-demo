@@ -1,98 +1,89 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# SaaS Authentication & MFA Boilerplate (NestJS)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A highly secure, robust, and production-ready authentication backend built with **NestJS (Fastify)**, **Prisma ORM**, and **PostgreSQL**. 
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+This system provides a complete, hardened foundation for any modern SaaS application requiring comprehensive identity management, Multi-Factor Authentication (MFA), and Role-Based Access Control (RBAC).
 
-## Description
+## 🚀 Core Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Authentication & Identity
+- **Multi-Step Registration:** Email OTP initiation followed by password setup.
+- **Robust Login Flow:** Secure login with JWT Access & Refresh Token generation.
+- **Refresh Token Rotation (RTR):** Strict token rotation and family revocation to prevent replay attacks.
+- **OAuth 2.0 SSO:** Seamless integration for Google and GitHub logins with built-in CSRF (`state`) protection.
+- **Password Management:** Secure "Forgot Password" OTP flow and authenticated "Change Password" flows that instantly revoke older sessions.
 
-## Project setup
+### Multi-Factor Authentication (MFA)
+- **TOTP Authenticator Apps:** Full support for apps like Google Authenticator and Authy.
+- **Backup Codes:** Generates 8 cryptographically secure, single-use backup codes (~40 bits entropy).
+- **Recovery Link Flow:** Fallback email-based account recovery to disable MFA in emergencies (segregated from password resets).
+- **Hardened Replay Protection:** In-memory caching blocks TOTP code reuse within the 90-second drift window.
 
+### Advanced Security
+- **Device Verification:** Unknown devices/IPs trigger an email verification gate using strictly scoped `purpose: 'device_verify'` tokens.
+- **Global Token Invalidation:** Changing a password automatically invalidates all previous sessions and refresh token families.
+- **Granular RBAC:** Protect routes easily using `@Roles('admin')` and `@Permissions('read:users')` decorators (which enforce strict AND/OR logic).
+- **Hardened Middleware & Guards:** Protects against `mfa_pending` token bypasses and enforces strict `sessionId` presence.
+
+## 🛠 Tech Stack
+
+- **Framework:** [NestJS](https://nestjs.com/) (Fastify adapter for high performance)
+- **Database:** [PostgreSQL](https://www.postgresql.org/)
+- **ORM:** [Prisma](https://www.prisma.io/)
+- **Authentication:** Custom JWT/Bcrypt Implementation (No Passport.js overhead)
+- **Language:** TypeScript
+
+## 📦 Project Setup
+
+### 1. Install Dependencies
 ```bash
-$ pnpm install
+pnpm install
 ```
 
-## Compile and run the project
+### 2. Environment Variables
+Create a `.env` or `.env.development.local` file in the root directory and configure your PostgreSQL database connection, JWT secrets, and OAuth credentials:
+```env
+# Example .env configuration
+DATABASE_URL="postgresql://user:password@localhost:5432/saas_db?schema=public"
+JWT_SECRET="your-super-secret-jwt-key"
+```
+
+### 3. Database Migration & Prisma Client
+Ensure your local development server is stopped before generating the Prisma client to prevent file lock (`EPERM`) errors.
+```bash
+npx prisma generate
+npx prisma migrate dev
+```
+
+## 💻 Running the Application
 
 ```bash
 # development
 $ pnpm run start
 
-# watch mode
+# watch mode (recommended)
 $ pnpm run start:dev
 
 # production mode
 $ pnpm run start:prod
 ```
 
-## Run tests
+## 🧪 Testing the API
 
-```bash
-# unit tests
-$ pnpm run test
+The project includes a comprehensive Postman collection:
+1. Navigate to the `postman/collections/` directory.
+2. Import `saas_auth_mfa.postman_collection.json` into Postman.
+3. The collection is pre-configured with environment variables and automation scripts that automatically capture JWTs and `mfaPendingTokens` to make testing the login/MFA flows effortless.
 
-# e2e tests
-$ pnpm run test:e2e
+## 🔒 Security Posture
 
-# test coverage
-$ pnpm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+This boilerplate was recently subjected to a **17-point security hardening process**, which included:
+- Enforcing `isUsed: true` on all one-time token verifications.
+- Stamping `passwordChangedAt` timestamps to proactively reject any tokens minted before a password reset.
+- Introducing a completely dedicated `MfaRecoveryToken` table to segregate MFA recovery tokens from password reset tokens.
+- Implementing robust OAuth `state` CSRF validations.
+- Safely handling missing tokens and session errors in public route middleware using NestJS `Logger`.
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is [MIT licensed](LICENSE).
