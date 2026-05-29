@@ -1,20 +1,32 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreatePermissionDto, UpdatePermissionDto, CreatePermissionGroupDto, UpdatePermissionGroupDto } from './dto';
+import {
+  CreatePermissionDto,
+  UpdatePermissionDto,
+  CreatePermissionGroupDto,
+  UpdatePermissionGroupDto,
+} from './dto';
 
 @Injectable()
 export class PermissionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Create Permission
+   * Validates name uniqueness and persists a new permission, optionally
+   * recording which admin created it.
+   */
   async createPermission(dto: CreatePermissionDto, createdById?: string) {
     const existingPermission = await this.prisma.permission.findUnique({
       where: { name: dto.name },
     });
 
     if (existingPermission) {
-      throw new BadRequestException(
-        `Permission "${dto.name}" already exists`,
-      );
+      throw new BadRequestException(`Permission "${dto.name}" already exists`);
     }
 
     return this.prisma.permission.create({
@@ -31,6 +43,11 @@ export class PermissionsService {
     });
   }
 
+  /**
+   * Get All Permissions
+   * Returns every permission ordered by creation date, including their
+   * associated groups, roles, and the admin who created each entry.
+   */
   async getAllPermissions() {
     return this.prisma.permission.findMany({
       include: {
@@ -42,6 +59,11 @@ export class PermissionsService {
     });
   }
 
+  /**
+   * Get Permission By ID
+   * Fetches a single permission with its groups, roles, and creator.
+   * Throws NotFoundException if the permission does not exist.
+   */
   async getPermissionById(id: string) {
     const permission = await this.prisma.permission.findUnique({
       where: { id },
@@ -59,6 +81,11 @@ export class PermissionsService {
     return permission;
   }
 
+  /**
+   * Update Permission
+   * Validates name uniqueness when renaming, skipping the check against
+   * itself, then applies the partial update to name or description.
+   */
   async updatePermission(id: string, dto: UpdatePermissionDto) {
     await this.getPermissionById(id);
 
@@ -87,6 +114,11 @@ export class PermissionsService {
     });
   }
 
+  /**
+   * Delete Permission
+   * Blocks deletion if the permission is currently assigned to any roles.
+   * Permanently removes the permission record.
+   */
   async deletePermission(id: string) {
     await this.getPermissionById(id);
 
@@ -105,10 +137,12 @@ export class PermissionsService {
     });
   }
 
-  async assignPermissionToGroup(
-    permissionId: string,
-    groupIds: string[],
-  ) {
+  /**
+   * Assign Permission to Groups
+   * Validates all group IDs exist, then connects the permission to each
+   * group. Already-assigned groups are unaffected (Prisma connect is idempotent).
+   */
+  async assignPermissionToGroup(permissionId: string, groupIds: string[]) {
     await this.getPermissionById(permissionId);
 
     const groups = await this.prisma.permissionGroup.findMany({
@@ -119,7 +153,7 @@ export class PermissionsService {
       throw new BadRequestException('One or more group IDs do not exist');
     }
 
-    const updatedPermission = await this.prisma.permission.update({
+    return this.prisma.permission.update({
       where: { id: permissionId },
       data: {
         groups: {
@@ -128,17 +162,17 @@ export class PermissionsService {
       },
       include: { groups: true },
     });
-
-    return updatedPermission;
   }
 
-  async removePermissionFromGroup(
-    permissionId: string,
-    groupIds: string[],
-  ) {
+  /**
+   * Remove Permission from Groups
+   * Disconnects the permission from each specified group.
+   * Groups that do not have the permission are silently skipped.
+   */
+  async removePermissionFromGroup(permissionId: string, groupIds: string[]) {
     await this.getPermissionById(permissionId);
 
-    const updatedPermission = await this.prisma.permission.update({
+    return this.prisma.permission.update({
       where: { id: permissionId },
       data: {
         groups: {
@@ -147,10 +181,13 @@ export class PermissionsService {
       },
       include: { groups: true },
     });
-
-    return updatedPermission;
   }
 
+  /**
+   * Create Permission Group
+   * Validates group name uniqueness and persists a new permission group,
+   * optionally recording which admin created it.
+   */
   async createPermissionGroup(
     dto: CreatePermissionGroupDto,
     createdById?: string,
@@ -178,6 +215,11 @@ export class PermissionsService {
     });
   }
 
+  /**
+   * Get All Permission Groups
+   * Returns every permission group ordered by creation date, including
+   * their associated permissions and the admin who created each group.
+   */
   async getAllPermissionGroups() {
     return this.prisma.permissionGroup.findMany({
       include: {
@@ -188,6 +230,11 @@ export class PermissionsService {
     });
   }
 
+  /**
+   * Get Permission Group By ID
+   * Fetches a single group with its permissions and creator details.
+   * Throws NotFoundException if the group does not exist.
+   */
   async getPermissionGroupById(id: string) {
     const group = await this.prisma.permissionGroup.findUnique({
       where: { id },
@@ -204,10 +251,12 @@ export class PermissionsService {
     return group;
   }
 
-  async updatePermissionGroup(
-    id: string,
-    dto: UpdatePermissionGroupDto,
-  ) {
+  /**
+   * Update Permission Group
+   * Validates name uniqueness when renaming, skipping the check against
+   * itself, then applies the partial update to name or description.
+   */
+  async updatePermissionGroup(id: string, dto: UpdatePermissionGroupDto) {
     await this.getPermissionGroupById(id);
 
     if (dto.name) {
@@ -234,6 +283,11 @@ export class PermissionsService {
     });
   }
 
+  /**
+   * Delete Permission Group
+   * Permanently removes the permission group. Permissions within the group
+   * are not deleted — only the group container is removed.
+   */
   async deletePermissionGroup(id: string) {
     await this.getPermissionGroupById(id);
 
