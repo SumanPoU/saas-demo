@@ -1,5 +1,5 @@
 import { IsString, IsOptional, MinLength } from 'class-validator';
-  import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePermissionGroupDto {
   @ApiProperty({

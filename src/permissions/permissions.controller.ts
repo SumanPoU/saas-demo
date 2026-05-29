@@ -37,7 +37,7 @@ export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
   @Post()
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('permissions:create')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new permission' })
@@ -55,7 +55,7 @@ export class PermissionsController {
   }
 
   @Get()
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('permissions:read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -67,8 +67,101 @@ export class PermissionsController {
     return this.permissionsService.getAllPermissions();
   }
 
+  /**
+   *  Permission Groups
+   * */
+
+  @Post('groups')
+  @Roles('Admin')
+  @Permissions('permissions:create')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a new permission group' })
+  @ApiResponse({
+    status: 201,
+    description: 'Permission group successfully created',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Permission group with that name already exists',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async createPermissionGroup(
+    @Body() dto: CreatePermissionGroupDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.permissionsService.createPermissionGroup(dto, user.id);
+  }
+
+  @Get('groups')
+  @Roles('Admin')
+  @Permissions('permissions:read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Retrieve all permission groups with their permissions',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of all permission groups returned',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getAllPermissionGroups() {
+    return this.permissionsService.getAllPermissionGroups();
+  }
+
+  @Get('groups/:id')
+  @Roles('Admin')
+  @Permissions('permissions:read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Retrieve a single permission group by ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Permission group details returned',
+  })
+  @ApiResponse({ status: 404, description: 'Permission group not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getPermissionGroupById(@Param('id') id: string) {
+    return this.permissionsService.getPermissionGroupById(id);
+  }
+
+  @Patch('groups/:id')
+  @Roles('Admin')
+  @Permissions('permissions:update')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update a permission group name or description' })
+  @ApiResponse({
+    status: 200,
+    description: 'Permission group successfully updated',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Permission group name already taken',
+  })
+  @ApiResponse({ status: 404, description: 'Permission group not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updatePermissionGroup(
+    @Param('id') id: string,
+    @Body() dto: UpdatePermissionGroupDto,
+  ) {
+    return this.permissionsService.updatePermissionGroup(id, dto);
+  }
+
+  @Delete('groups/:id')
+  @Roles('Admin')
+  @Permissions('permissions:delete')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a permission group' })
+  @ApiResponse({
+    status: 204,
+    description: 'Permission group successfully deleted',
+  })
+  @ApiResponse({ status: 404, description: 'Permission group not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async deletePermissionGroup(@Param('id') id: string) {
+    await this.permissionsService.deletePermissionGroup(id);
+  }
+
   @Get(':id')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('permissions:read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Retrieve a single permission by ID' })
@@ -80,7 +173,7 @@ export class PermissionsController {
   }
 
   @Patch(':id')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('permissions:update')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update a permission name or description' })
@@ -96,7 +189,7 @@ export class PermissionsController {
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('permissions:delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
@@ -114,7 +207,7 @@ export class PermissionsController {
   }
 
   @Post(':id/groups')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('permissions:update')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Assign a permission to one or more groups' })
@@ -139,7 +232,7 @@ export class PermissionsController {
   }
 
   @Delete(':id/groups')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('permissions:update')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a permission from one or more groups' })
@@ -157,98 +250,5 @@ export class PermissionsController {
       permissionId,
       dto.groupIds,
     );
-  }
-
-  /**
-   *  Permission Groups
-   * */
-
-  @Post('groups')
-  @Roles('admin')
-  @Permissions('permissions:create')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new permission group' })
-  @ApiResponse({
-    status: 201,
-    description: 'Permission group successfully created',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Permission group with that name already exists',
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async createPermissionGroup(
-    @Body() dto: CreatePermissionGroupDto,
-    @CurrentUser() user: any,
-  ) {
-    return this.permissionsService.createPermissionGroup(dto, user.id);
-  }
-
-  @Get('groups')
-  @Roles('admin')
-  @Permissions('permissions:read')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Retrieve all permission groups with their permissions',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'List of all permission groups returned',
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getAllPermissionGroups() {
-    return this.permissionsService.getAllPermissionGroups();
-  }
-
-  @Get('groups/:id')
-  @Roles('admin')
-  @Permissions('permissions:read')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Retrieve a single permission group by ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Permission group details returned',
-  })
-  @ApiResponse({ status: 404, description: 'Permission group not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getPermissionGroupById(@Param('id') id: string) {
-    return this.permissionsService.getPermissionGroupById(id);
-  }
-
-  @Patch('groups/:id')
-  @Roles('admin')
-  @Permissions('permissions:update')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update a permission group name or description' })
-  @ApiResponse({
-    status: 200,
-    description: 'Permission group successfully updated',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Permission group name already taken',
-  })
-  @ApiResponse({ status: 404, description: 'Permission group not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async updatePermissionGroup(
-    @Param('id') id: string,
-    @Body() dto: UpdatePermissionGroupDto,
-  ) {
-    return this.permissionsService.updatePermissionGroup(id, dto);
-  }
-
-  @Delete('groups/:id')
-  @Roles('admin')
-  @Permissions('permissions:delete')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a permission group' })
-  @ApiResponse({
-    status: 204,
-    description: 'Permission group successfully deleted',
-  })
-  @ApiResponse({ status: 404, description: 'Permission group not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async deletePermissionGroup(@Param('id') id: string) {
-    await this.permissionsService.deletePermissionGroup(id);
   }
 }

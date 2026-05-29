@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "4b6a8277-2eef-4171-aa3a-592f4c3b53c1",
-    "name": "SaaS Enterprise Auth & MFA API",
-    "description": "Comprehensive Postman collection for testing the NestJS enterprise authentication system, including standard multi-step registration, credentials and OAuth SSO login, device verification, token rotation, and TOTP-based Multi-Factor Authentication.",
+    "name": "SaaS Enterprise Auth, MFA Roles and Permissions API",
+    "description": "Comprehensive Postman collection for testing the NestJS enterprise authentication system, including authentication and registration, MFA, roles, permissions, and permission groups.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -183,7 +183,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identifier\": \"user@demo.com\",\n  \"password\": \"UserPassword123!\"\n}"
+              "raw": "{\n  \"identifier\": \"{{loginIdentifier}}\",\n  \"password\": \"{{loginPassword}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/login",
@@ -196,7 +196,7 @@
                 "login"
               ]
             },
-            "description": "Standard login with credentials. If MFA is active, this returns a 200 OK with `requiresMfa: true` and an `mfaPendingToken`. If a new device is detected, it triggers a device verification link and returns a 202 Accepted status."
+            "description": "Standard login with credentials. This captures accessToken and refreshToken for all protected collections, including Roles and Permissions. Set loginIdentifier/loginPassword in the environment to switch users."
           },
           "response": []
         },
@@ -701,7 +701,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"token\": \"5e499ed7695cef776adfdfcedf092e2f2162f3c927dcdcae35ba798216ede451\"\n}"
+              "raw": "{\n  \"token\": \"74e7f3e3ef2ccd4d18caff75cedac554ae5acc484d3d43afcac07f9ccb1fdfaa\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v1/mfa/verify-device",
@@ -863,6 +863,922 @@
       ],
       "id": "95c5968c-ebf9-4b7f-b177-24418b463a57",
       "description": "Endpoints relating to Multi-Factor Authentication controls."
+    },
+    {
+      "name": "3. Role and permission",
+      "item": [
+        {
+          "name": "3.A Permissions API",
+          "item": [
+            {
+              "name": "3.A.a Permission Groups",
+              "item": [
+                {
+                  "name": "Create Permission Group",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const response = pm.response.json();",
+                          "const data = response.data || response;",
+                          "const value = data.id || response.id;",
+                          "if (value) {",
+                          "    pm.environment.set(\"permissionGroupId\", value);",
+                          "}"
+                        ],
+                        "type": "javascript"
+                      }
+                    }
+                  ],
+                  "id": "c67a7c0a-9782-4a43-9f42-b0c8823b4305",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"Reporting {{$timestamp}}\",\n  \"description\": \"Permissions related to reports and analytics.\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions/groups",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "groups"
+                      ]
+                    },
+                    "description": "Creates a permission group and stores permissionGroupId."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "List Permission Groups",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const response = pm.response.json();",
+                          "const data = response.data || response;",
+                          "const items = data;",
+                          "const item = Array.isArray(items) ? items.find((entry) => true) : null;",
+                          "if (item && item.id) {",
+                          "    pm.environment.set(\"permissionGroupId\", item.id);",
+                          "}"
+                        ],
+                        "type": "javascript"
+                      }
+                    }
+                  ],
+                  "id": "d082a6cf-b11e-42e3-9e24-b8ddbdcfd8ce",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions/groups",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "groups"
+                      ]
+                    },
+                    "description": "Lists permission groups and captures the first group id when present."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Permission Group by ID",
+                  "id": "8cc60d6b-4ee0-42b8-baa1-4e9529cd857c",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions/groups/{{permissionGroupId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "groups",
+                        "{{permissionGroupId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Permission Group",
+                  "id": "4e3eb9ac-32c5-4dd2-bf2b-00d393e8df36",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"description\": \"Updated reporting and analytics permissions.\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions/groups/{{permissionGroupId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "groups",
+                        "{{permissionGroupId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Permission Group",
+                  "id": "6d9532c9-3bdc-4a53-a2cd-ec70610d402f",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions/groups/{{permissionGroupId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "groups",
+                        "{{permissionGroupId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ],
+              "id": "21d49869-7ec5-46a5-bd7d-aba7a6025393"
+            },
+            {
+              "name": "3.A.b Permissions",
+              "item": [
+                {
+                  "name": "Create Permission",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const response = pm.response.json();",
+                          "const data = response.data || response;",
+                          "const value = data.id || response.id;",
+                          "if (value) {",
+                          "    pm.environment.set(\"permissionId\", value);",
+                          "}"
+                        ],
+                        "type": "javascript"
+                      }
+                    }
+                  ],
+                  "id": "5794944c-5c04-4a10-afe6-1e2681d1d8a0",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"reports:read:{{$timestamp}}\",\n  \"description\": \"Allows viewing reports.\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions"
+                      ]
+                    },
+                    "description": "Creates a permission and stores permissionId."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "List Permissions",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const response = pm.response.json();",
+                          "const data = response.data || response;",
+                          "const items = data;",
+                          "const item = Array.isArray(items) ? items.find((entry) => true) : null;",
+                          "if (item && item.id) {",
+                          "    pm.environment.set(\"permissionId\", item.id);",
+                          "}"
+                        ],
+                        "type": "javascript"
+                      }
+                    }
+                  ],
+                  "id": "8e393424-dd30-47c1-b997-126ae4ea21c4",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions"
+                      ]
+                    },
+                    "description": "Lists permissions and captures the first permission id when present."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Permission by ID",
+                  "id": "05d1e853-91db-4f57-8d82-626ae2918280",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions/{{permissionId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "{{permissionId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Permission",
+                  "id": "de032b2d-5a6e-4c28-b3c6-8c8c68d27c59",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"description\": \"Allows viewing reporting dashboards.\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions/{{permissionId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "{{permissionId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Assign Permission to Groups",
+                  "id": "48fb6129-d23f-428b-a320-2d2bc2eeeb88",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"groupIds\": [\n    \"{{permissionGroupId}}\"\n  ]\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions/{{permissionId}}/groups",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "{{permissionId}}",
+                        "groups"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Remove Permission from Groups",
+                  "id": "0da239f7-4980-4a00-8650-ee803dd24d7d",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"groupIds\": [\n    \"{{permissionGroupId}}\"\n  ]\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions/{{permissionId}}/groups",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "{{permissionId}}",
+                        "groups"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Permission",
+                  "id": "e571bf2a-e827-4655-9881-8af72d6c1f52",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/v1/permissions/{{permissionId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "{{permissionId}}"
+                      ]
+                    },
+                    "description": "Deletes permissionId. This fails if the permission is still assigned to roles."
+                  },
+                  "response": []
+                }
+              ],
+              "id": "e801098b-92bd-4f36-b2cd-d24224f3ac81"
+            }
+          ],
+          "id": "3b7ffcb2-e659-486d-8ed1-8b0181d0c095",
+          "description": "Permission group and permission endpoints protected by RBAC."
+        },
+        {
+          "name": "3.B Roles Api",
+          "item": [
+            {
+              "name": "Create Role",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const response = pm.response.json();",
+                      "const data = response.data || response;",
+                      "const value = data.id || response.id;",
+                      "if (value) {",
+                      "    pm.environment.set(\"roleId\", value);",
+                      "}"
+                    ],
+                    "type": "javascript"
+                  }
+                }
+              ],
+              "id": "8bd79939-f036-4efc-a342-810a39729907",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"QA Reviewer {{$timestamp}}\",\n  \"description\": \"Can review reports and QA workflows.\",\n  \"isDefault\": false\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/roles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles"
+                  ]
+                },
+                "description": "Creates a role and stores roleId."
+              },
+              "response": []
+            },
+            {
+              "name": "List Roles",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const response = pm.response.json();",
+                      "const data = response.data || response;",
+                      "const items = data;",
+                      "const item = Array.isArray(items) ? items.find((entry) => entry.name !== \"SuperAdmin\" && entry.name !== \"Admin\" && entry.name !== \"User\") : null;",
+                      "if (item && item.id) {",
+                      "    pm.environment.set(\"roleId\", item.id);",
+                      "}"
+                    ],
+                    "type": "javascript"
+                  }
+                }
+              ],
+              "id": "85910eef-206e-4c34-b8a0-d1632df61f85",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/roles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles"
+                  ]
+                },
+                "description": "Lists roles and captures the first custom role id."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Role by ID",
+              "id": "90a2fa5e-7db2-4c32-9755-4f80884de02e",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/roles/{{roleId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Role",
+              "id": "b625056c-99f6-428f-ae24-a9907d6e1ed6",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Can review reports, QA workflows, and operational checks.\",\n  \"isDefault\": false\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/roles/{{roleId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Assign Permissions to Role",
+              "id": "93807b5a-3a87-4a5d-990c-1202002b823f",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"permissionIds\": [\n    \"{{permissionId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/roles/{{roleId}}/permissions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}",
+                    "permissions"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Remove Permissions from Role",
+              "id": "d406c213-6999-4c13-ad98-0d4467910e49",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"permissionIds\": [\n    \"{{permissionId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/roles/{{roleId}}/permissions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}",
+                    "permissions"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Assign Role to Users",
+              "id": "c827151c-a16a-466b-8961-71ad345394bc",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"userIds\": [\n    \"{{userId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/roles/{{roleId}}/users",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}",
+                    "users"
+                  ]
+                },
+                "description": "Assigns roleId to userId. Run Remove Role from Users before deleting the role."
+              },
+              "response": []
+            },
+            {
+              "name": "Remove Role from Users",
+              "id": "f619a3fd-0a45-46d8-a517-3093cc5cc1ec",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"userIds\": [\n    \"{{userId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/roles/{{roleId}}/users",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}",
+                    "users"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get User Roles",
+              "id": "de12de78-b24c-4d72-aa6d-8c71abc24273",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/roles/user/{{userId}}/roles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "user",
+                    "{{userId}}",
+                    "roles"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Role",
+              "id": "02ecfce2-d2f7-4237-bcb3-60f1fc3e1f8a",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/roles/{{roleId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}"
+                  ]
+                },
+                "description": "Deletes roleId. This fails if the role is still assigned to users."
+              },
+              "response": []
+            }
+          ],
+          "id": "a680e825-3f14-4053-bb8e-0cab3e63c2b4",
+          "description": "Role management and role assignment endpoints."
+        }
+      ],
+      "id": "620c40a9-cb7c-4d66-ad77-7b2a6eba4693",
+      "description": "Role and permission management endpoints. Run Standard Credentials Login in 1. Authentication & Registration first; these requests reuse the shared accessToken environment variable."
     }
   ]
 }

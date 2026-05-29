@@ -454,17 +454,11 @@ export class AuthService {
       },
     });
 
+    const authUser = await this.getAuthUserPayload(user.id);
+
     return {
       tokens,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        isSuperAdmin: user.isSuperAdmin,
-        roles: user.roles.map((r: any) => r.name),
-      },
+      user: authUser,
     };
   }
 
@@ -604,17 +598,11 @@ export class AuthService {
       },
     });
 
+    const authUser = await this.getAuthUserPayload(storedToken.user.id);
+
     return {
       tokens,
-      user: {
-        id: storedToken.user.id,
-        username: storedToken.user.username,
-        email: storedToken.user.email,
-        firstName: storedToken.user.firstName,
-        lastName: storedToken.user.lastName,
-        isSuperAdmin: storedToken.user.isSuperAdmin,
-        roles: storedToken.user.roles.map((r) => r.name),
-      },
+      user: authUser,
     };
   }
 
@@ -1267,17 +1255,11 @@ export class AuthService {
       },
     });
 
+    const authUser = await this.getAuthUserPayload(user.id);
+
     return {
       tokens,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        isSuperAdmin: user.isSuperAdmin,
-        roles: user.roles.map((r: any) => r.name),
-      },
+      user: authUser,
     };
   }
 
@@ -1356,28 +1338,7 @@ export class AuthService {
    * Fetch user profile from the database.
    */
   async getProfile(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        roles: true,
-      },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User account not found');
-    }
-
-    return {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      avatarUrl: user.avatarUrl,
-      isActive: user.isActive,
-      isSuperAdmin: user.isSuperAdmin,
-      roles: user.roles.map((r) => r.name),
-    };
+    return this.getAuthUserPayload(userId);
   }
 
   /**
@@ -1471,6 +1432,65 @@ export class AuthService {
   }
 
   // --- Helper Methods ---
+
+  private async getAuthUserPayload(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        roles: {
+          include: {
+            rolePermissions: {
+              include: {
+                permission: {
+                  select: {
+                    id: true,
+                    name: true,
+                    // description: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User account not found');
+    }
+
+    const permissionsById = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        // description?: string;
+      }
+    >();
+
+    for (const role of user.roles) {
+      for (const rolePermission of role.rolePermissions) {
+        permissionsById.set(
+          rolePermission.permission.id,
+          rolePermission.permission,
+        );
+      }
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+      isActive: user.isActive,
+      isSuperAdmin: user.isSuperAdmin,
+      roles: user.roles.map((role) => role.name),
+      // permissions: Array.from(permissionsById.values()),
+      permissions: Array.from(permissionsById.values()).map((p) => p.name),
+    };
+  }
 
   private async checkMfaRequired(user: any): Promise<any | null> {
     const mfaConfig = await this.prisma.mfaConfig.findUnique({

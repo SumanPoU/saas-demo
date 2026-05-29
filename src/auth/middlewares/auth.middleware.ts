@@ -51,7 +51,9 @@ export class AuthMiddleware implements NestMiddleware {
         include: {
           roles: {
             include: {
-              permissions: true,
+              rolePermissions: {
+                include: { permission: true },
+              },
             },
           },
         },
@@ -74,7 +76,13 @@ export class AuthMiddleware implements NestMiddleware {
       // 3. Extract roles and flat permissions
       const roles = user.roles.map((r) => r.name);
       const permissions = Array.from(
-        new Set(user.roles.flatMap((r) => r.permissions.map((p) => p.name))),
+        new Set(
+          user.roles.flatMap((r) =>
+            r.rolePermissions.map(
+              (rolePermission) => rolePermission.permission.name,
+            ),
+          ),
+        ),
       );
 
       // 4. Attach structured user session metadata to the request

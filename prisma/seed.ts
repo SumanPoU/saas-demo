@@ -61,8 +61,14 @@ async function main() {
       name: 'Access Control',
       description: 'Permissions related to role management and security permissions.',
       permissions: [
-        { name: 'roles:manage', description: 'Allows creating, modifying, and deleting roles' },
+        { name: 'roles:create', description: 'Allows creating roles' },
+        { name: 'roles:read', description: 'Allows viewing roles and role assignments' },
+        { name: 'roles:update', description: 'Allows modifying roles and role permission assignments' },
+        { name: 'roles:delete', description: 'Allows deleting roles' },
         { name: 'permissions:read', description: 'Allows viewing available system permissions' },
+        { name: 'permissions:create', description: 'Allows creating permissions and permission groups' },
+        { name: 'permissions:update', description: 'Allows modifying permissions and permission groups' },
+        { name: 'permissions:delete', description: 'Allows deleting permissions and permission groups' },
         { name: 'roles:assign', description: 'Allows assigning roles to users' },
       ],
     },
@@ -132,9 +138,23 @@ async function main() {
     });
   }
 
-  // Admin gets specific permissions (User Management, Access Control read, and Audit read)
+  // Admin gets user, access-control, and audit permissions required by protected controllers.
   const adminPermissions = allPermissions.filter((p) =>
-    ['users:create', 'users:read', 'users:update', 'permissions:read', 'audit:read'].includes(p.name)
+    [
+      'users:create',
+      'users:read',
+      'users:update',
+      'roles:create',
+      'roles:read',
+      'roles:update',
+      'roles:delete',
+      'roles:assign',
+      'permissions:create',
+      'permissions:read',
+      'permissions:update',
+      'permissions:delete',
+      'audit:read',
+    ].includes(p.name)
   );
 
   for (const perm of adminPermissions) {

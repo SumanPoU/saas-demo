@@ -10,6 +10,18 @@ import { CreateRoleDto, UpdateRoleDto } from './dto';
 export class RolesService {
   constructor(private prisma: PrismaService) {}
 
+  private withPermissionsFromRolePermissions<
+    T extends { rolePermissions?: any[] },
+  >(role: T) {
+    return {
+      ...role,
+      permissions:
+        role.rolePermissions
+          ?.map((rolePermission) => rolePermission.permission)
+          .filter(Boolean) ?? [],
+    };
+  }
+
   /**
    * Guard: Single Default Role Constraint
    * Checks that no other role is already marked as default before allowing
@@ -66,14 +78,13 @@ export class RolesService {
         isDefault: dto.isDefault ?? false,
       },
       include: {
-        permissions: true,
         rolePermissions: {
           include: { permission: true },
         },
       },
     });
 
-    return role;
+    return this.withPermissionsFromRolePermissions(role);
   }
 
   /**
@@ -82,9 +93,8 @@ export class RolesService {
    * and the users currently assigned to each role.
    */
   async getAllRoles() {
-    return this.prisma.role.findMany({
+    const roles = await this.prisma.role.findMany({
       include: {
-        permissions: true,
         rolePermissions: {
           include: { permission: true },
         },
@@ -94,6 +104,8 @@ export class RolesService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return roles.map((role) => this.withPermissionsFromRolePermissions(role));
   }
 
   /**
@@ -105,7 +117,6 @@ export class RolesService {
     const role = await this.prisma.role.findUnique({
       where: { id },
       include: {
-        permissions: true,
         rolePermissions: {
           include: {
             permission: true,
@@ -122,7 +133,7 @@ export class RolesService {
       throw new NotFoundException(`Role with ID "${id}" not found`);
     }
 
-    return role;
+    return this.withPermissionsFromRolePermissions(role);
   }
 
   /**
@@ -149,7 +160,7 @@ export class RolesService {
     // prevents a false conflict against itself.
     await this.ensureSingleDefault(dto.isDefault, id);
 
-    return this.prisma.role.update({
+    const updatedRole = await this.prisma.role.update({
       where: { id },
       data: {
         name: dto.name,
@@ -157,12 +168,13 @@ export class RolesService {
         isDefault: dto.isDefault,
       },
       include: {
-        permissions: true,
         rolePermissions: {
           include: { permission: true },
         },
       },
     });
+
+    return this.withPermissionsFromRolePermissions(updatedRole);
   }
 
   /**
@@ -238,7 +250,10 @@ export class RolesService {
     return {
       roleId,
       role: role.name,
-      permissions: rolePermissions,
+      rolePermissions,
+      permissions: rolePermissions.map(
+        (rolePermission) => rolePermission.permission,
+      ),
     };
   }
 
@@ -343,7 +358,6 @@ export class RolesService {
       include: {
         roles: {
           include: {
-            permissions: true,
             rolePermissions: { include: { permission: true } },
           },
         },
@@ -354,7 +368,9 @@ export class RolesService {
       throw new NotFoundException(`User with ID "${userId}" not found`);
     }
 
-    return user.roles;
+    return user.roles.map((role) =>
+      this.withPermissionsFromRolePermissions(role),
+    );
   }
 
   /**
@@ -390,12 +406,13 @@ export class RolesService {
    * permissions. Returns null if no default role has been configured.
    */
   async getDefaultRole() {
-    return this.prisma.role.findFirst({
+    const role = await this.prisma.role.findFirst({
       where: { isDefault: true },
       include: {
-        permissions: true,
         rolePermissions: { include: { permission: true } },
       },
     });
+
+    return role ? this.withPermissionsFromRolePermissions(role) : null;
   }
 }

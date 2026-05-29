@@ -36,7 +36,7 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Post()
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('roles:create')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new role' })
@@ -51,7 +51,7 @@ export class RolesController {
   }
 
   @Get()
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('roles:read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -63,8 +63,20 @@ export class RolesController {
     return this.rolesService.getAllRoles();
   }
 
+  @Get('user/:userId/roles')
+  @Roles('Admin')
+  @Permissions('roles:read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Retrieve all roles assigned to a specific user' })
+  @ApiResponse({ status: 200, description: "User's roles returned" })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getUserRoles(@Param('userId') userId: string) {
+    return this.rolesService.getUserRoles(userId);
+  }
+
   @Get(':id')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('roles:read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Retrieve a single role by ID' })
@@ -76,7 +88,7 @@ export class RolesController {
   }
 
   @Patch(':id')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('roles:update')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update a role name, description, or default flag' })
@@ -89,7 +101,7 @@ export class RolesController {
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('roles:delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a role, blocked if assigned to any user' })
@@ -105,7 +117,7 @@ export class RolesController {
   }
 
   @Post(':id/permissions')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('roles:update')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Assign one or more permissions to a role' })
@@ -132,7 +144,7 @@ export class RolesController {
   }
 
   @Delete(':id/permissions')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('roles:update')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove one or more permissions from a role' })
@@ -153,7 +165,7 @@ export class RolesController {
   }
 
   @Post(':id/users')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('roles:assign')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Assign a role to one or more users' })
@@ -175,7 +187,7 @@ export class RolesController {
   }
 
   @Delete(':id/users')
-  @Roles('admin')
+  @Roles('Admin')
   @Permissions('roles:assign')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a role from one or more users' })
@@ -192,15 +204,4 @@ export class RolesController {
     await this.rolesService.removeRoleFromUsers(roleId, dto.userIds);
   }
 
-  @Get('user/:userId/roles')
-  @Roles('admin')
-  @Permissions('roles:read')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Retrieve all roles assigned to a specific user' })
-  @ApiResponse({ status: 200, description: "User's roles returned" })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUserRoles(@Param('userId') userId: string) {
-    return this.rolesService.getUserRoles(userId);
-  }
 }
