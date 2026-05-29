@@ -15,10 +15,14 @@ export class MailService {
 
     // Safe dynamic SMTP initialization fallback
     if (!user || !pass || user === 'mock-user') {
-      this.logger.warn('SMTP credentials not configured. Using console logger fallback for outgoing mail.');
+      this.logger.warn(
+        'SMTP credentials not configured. Using console logger fallback for outgoing mail.',
+      );
       this.transporter = {
         sendMail: async (options: any) => {
-          this.logger.log(`\n=========================================\n📬 [MOCK MAIL SENT]\nTo: ${options.to}\nSubject: ${options.subject}\nText: ${options.text}\n=========================================\n`);
+          this.logger.log(
+            `\n=========================================\n📬 [MOCK MAIL SENT]\nTo: ${options.to}\nSubject: ${options.subject}\nText: ${options.text}\n=========================================\n`,
+          );
           return { messageId: 'mock-id' };
         },
       } as any;
@@ -39,7 +43,8 @@ export class MailService {
    * Send a general text and HTML mail.
    */
   async sendEmail(to: string, subject: string, text: string, html: string) {
-    const from = this.config.get<string>('mail.from') ?? '"SaaS Demo" <noreply@demo.com>';
+    const from =
+      this.config.get<string>('mail.from') ?? '"SaaS Demo" <noreply@demo.com>';
     try {
       await this.transporter.sendMail({
         from,
@@ -180,4 +185,3 @@ export class MailService {
     await this.sendEmail(to, subject, text, html);
   }
 }
-

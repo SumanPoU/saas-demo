@@ -25,39 +25,49 @@ export class AuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    
+
     // Read pre-populated user from AuthMiddleware (supporting both Express and Fastify raw request objects)
     const user = request.user || request.raw?.user;
 
     if (!user) {
-      throw new UnauthorizedException('Authentication token is missing or invalid');
+      throw new UnauthorizedException(
+        'Authentication token is missing or invalid',
+      );
     }
 
     if (!user.sessionId) {
-      throw new UnauthorizedException('Session context is missing. Please log in again.');
+      throw new UnauthorizedException(
+        'Session context is missing. Please log in again.',
+      );
     }
 
     // Role enforcement
-    const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     if (requiredRoles?.length && !user.isSuperAdmin) {
       const hasRole = requiredRoles.some((r) => user.roles?.includes(r));
       if (!hasRole) {
-        throw new ForbiddenException('You do not have the required role to access this resource.');
+        throw new ForbiddenException(
+          'You do not have the required role to access this resource.',
+        );
       }
     }
 
     // Permission enforcement (AND logic — user must hold ALL listed permissions)
-    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
+      PERMISSIONS_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     if (requiredPermissions?.length && !user.isSuperAdmin) {
-      const hasAll = requiredPermissions.every((p) => user.permissions?.includes(p));
+      const hasAll = requiredPermissions.every((p) =>
+        user.permissions?.includes(p),
+      );
       if (!hasAll) {
-        throw new ForbiddenException('You do not have sufficient permissions to access this resource.');
+        throw new ForbiddenException(
+          'You do not have sufficient permissions to access this resource.',
+        );
       }
     }
 

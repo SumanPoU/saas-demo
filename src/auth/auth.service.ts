@@ -9,7 +9,11 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { InitiateRegisterDto, VerifyRegisterOtpDto, CompleteRegisterDto } from './dto/register.dto';
+import {
+  InitiateRegisterDto,
+  VerifyRegisterOtpDto,
+  CompleteRegisterDto,
+} from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -46,7 +50,7 @@ export class AuthService {
       if (existingUser.isActive || existingUser.passwordHash) {
         throw new ConflictException('Email address is already registered');
       }
-      
+
       // Overwrite previous incomplete pending user registration to ensure a fresh session sequence
       await this.prisma.user.delete({ where: { id: existingUser.id } });
     }
@@ -54,7 +58,7 @@ export class AuthService {
     // Unique Username Derivation: Extract the slug before '@' in the email
     const prefix = emailLower.split('@')[0].replace(/[^a-z0-9]/g, '');
     let username = prefix;
-    
+
     // Check if username is already taken in the system
     const userWithUsername = await this.prisma.user.findUnique({
       where: { username },
@@ -98,7 +102,9 @@ export class AuthService {
     await this.mailService.sendRegistrationOtp(user.email, otp);
 
     // Print verification code to console logs strictly for local developers
-    console.log(`\n=========================================\n🌱 [REGISTRATION OTP] sent to ${user.email}: \n👉 CODE: ${otp}\n=========================================\n`);
+    console.log(
+      `\n=========================================\n🌱 [REGISTRATION OTP] sent to ${user.email}: \n👉 CODE: ${otp}\n=========================================\n`,
+    );
 
     return {
       message: 'Verification OTP has been sent to your email address',
@@ -156,11 +162,15 @@ export class AuthService {
     });
 
     // Send email confirming verification success
-    await this.mailService.sendEmailVerifiedNotification(user.email, user.firstName ?? undefined);
+    await this.mailService.sendEmailVerifiedNotification(
+      user.email,
+      user.firstName ?? undefined,
+    );
 
     return {
       success: true,
-      message: 'Email address successfully verified. You can now proceed to set your password to complete registration.',
+      message:
+        'Email address successfully verified. You can now proceed to set your password to complete registration.',
     };
   }
 
@@ -187,17 +197,23 @@ export class AuthService {
     }
 
     // Hash incoming OTP code and find matching verification token record to guarantee verification state
-    const tokenHash = crypto.createHash('sha256').update(dto.code).digest('hex');
-    const verificationToken = await this.prisma.emailVerificationToken.findFirst({
-      where: {
-        userId: user.id,
-        tokenHash,
-        isUsed: true,
-      },
-    });
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(dto.code)
+      .digest('hex');
+    const verificationToken =
+      await this.prisma.emailVerificationToken.findFirst({
+        where: {
+          userId: user.id,
+          tokenHash,
+          isUsed: true,
+        },
+      });
 
     if (!verificationToken) {
-      throw new UnauthorizedException('Invalid or expired email verification code');
+      throw new UnauthorizedException(
+        'Invalid or expired email verification code',
+      );
     }
 
     const saltRounds = 10;
@@ -225,7 +241,10 @@ export class AuthService {
     });
 
     // Trigger welcoming completed email
-    await this.mailService.sendWelcomeNotification(updatedUser.email, updatedUser.firstName ?? undefined);
+    await this.mailService.sendWelcomeNotification(
+      updatedUser.email,
+      updatedUser.firstName ?? undefined,
+    );
 
     // Create Audit Log
     await this.prisma.auditLog.create({
@@ -240,7 +259,8 @@ export class AuthService {
 
     return {
       success: true,
-      message: 'Registration completed successfully! Please log in manually using your credentials.',
+      message:
+        'Registration completed successfully! Please log in manually using your credentials.',
     };
   }
 
@@ -253,10 +273,7 @@ export class AuthService {
     // Query user by email or username
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { email: identifier },
-          { username: identifier },
-        ],
+        OR: [{ email: identifier }, { username: identifier }],
       },
       include: {
         roles: true,
@@ -271,7 +288,10 @@ export class AuthService {
       throw new UnauthorizedException('This account has been deactivated');
     }
 
-    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email, username, or password');
     }
@@ -299,18 +319,22 @@ export class AuthService {
     // Verify new device (only if user has existing recognized sessions)
     if (!isDeviceRecognized && activeSessions.length > 0) {
       // Check if user has recently verified a device verification link (within last 15 minutes)
-      const recentVerifiedToken = await this.prisma.emailVerificationToken.findFirst({
-        where: {
-          userId: user.id,
-          isUsed: true,
-          usedAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
-          purpose: 'device_verify',
-        },
-      });
+      const recentVerifiedToken =
+        await this.prisma.emailVerificationToken.findFirst({
+          where: {
+            userId: user.id,
+            isUsed: true,
+            usedAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+            purpose: 'device_verify',
+          },
+        });
 
       if (!recentVerifiedToken) {
         const rawToken = crypto.randomBytes(32).toString('hex');
-        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const tokenHash = crypto
+          .createHash('sha256')
+          .update(rawToken)
+          .digest('hex');
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes TTL
 
         await this.prisma.emailVerificationToken.create({
@@ -324,13 +348,20 @@ export class AuthService {
           },
         });
 
-        const frontendUrl = this.configService.get<string>('frontendUrl') ?? 'http://localhost:3000';
+        const frontendUrl =
+          this.configService.get<string>('frontendUrl') ??
+          'http://localhost:3000';
         const verifyLink = `${frontendUrl}/auth/verify-device?token=${rawToken}`;
-        
-        await this.mailService.sendDeviceVerificationLink(user.email, verifyLink);
+
+        await this.mailService.sendDeviceVerificationLink(
+          user.email,
+          verifyLink,
+        );
 
         // Print to console log for local development
-        console.log(`\n=========================================\n📬 [NEW DEVICE VERIFICATION LINK]: \n👉 LINK: ${verifyLink}\n=========================================\n`);
+        console.log(
+          `\n=========================================\n📬 [NEW DEVICE VERIFICATION LINK]: \n👉 LINK: ${verifyLink}\n=========================================\n`,
+        );
 
         throw new HttpException(
           {
@@ -380,12 +411,18 @@ export class AuthService {
     });
 
     // Generate tokens
-    const tokens = await this.generateTokenPair(user.id, user.email, user.username, session.id);
+    const tokens = await this.generateTokenPair(
+      user.id,
+      user.email,
+      user.username,
+      session.id,
+    );
 
     // Hash the refresh token and save to DB
     const refreshTokenHash = this.hashToken(tokens.refreshToken);
     const refreshExpiresAt = new Date();
-    const refreshTTL = this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d';
+    const refreshTTL =
+      this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d';
     const refreshDays = this.parseDurationToDays(refreshTTL);
     refreshExpiresAt.setDate(refreshExpiresAt.getDate() + refreshDays);
 
@@ -410,7 +447,10 @@ export class AuthService {
         entityId: session.id,
         ipAddress,
         userAgent,
-        payload: { device: deviceDetails.deviceName, platform: deviceDetails.platform },
+        payload: {
+          device: deviceDetails.deviceName,
+          platform: deviceDetails.platform,
+        },
       },
     });
 
@@ -460,7 +500,11 @@ export class AuthService {
       throw new UnauthorizedException('Authentication token not recognized');
     }
 
-    if (storedToken.isUsed || storedToken.isRevoked || storedToken.session.isRevoked) {
+    if (
+      storedToken.isUsed ||
+      storedToken.isRevoked ||
+      storedToken.session.isRevoked
+    ) {
       // REUSE DETECTED: Revoke family tokens and terminate session
       await this.prisma.refreshToken.updateMany({
         where: { familyId: storedToken.familyId },
@@ -489,11 +533,15 @@ export class AuthService {
         },
       });
 
-      throw new UnauthorizedException('Access denied: Security violation detected');
+      throw new UnauthorizedException(
+        'Access denied: Security violation detected',
+      );
     }
 
     if (storedToken.session.expiresAt < new Date()) {
-      throw new UnauthorizedException('Your session has expired. Please sign in again');
+      throw new UnauthorizedException(
+        'Your session has expired. Please sign in again',
+      );
     }
 
     if (!storedToken.user.isActive) {
@@ -501,7 +549,10 @@ export class AuthService {
     }
 
     const passwordChangedAt = storedToken.user.passwordChangedAt;
-    if (passwordChangedAt && storedToken.session.createdAt < passwordChangedAt) {
+    if (
+      passwordChangedAt &&
+      storedToken.session.createdAt < passwordChangedAt
+    ) {
       await this.prisma.refreshToken.updateMany({
         where: { familyId: storedToken.familyId },
         data: { isRevoked: true, revokedAt: new Date() },
@@ -536,7 +587,8 @@ export class AuthService {
 
     const newHash = this.hashToken(tokens.refreshToken);
     const refreshExpiresAt = new Date();
-    const refreshTTL = this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d';
+    const refreshTTL =
+      this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d';
     const refreshDays = this.parseDurationToDays(refreshTTL);
     refreshExpiresAt.setDate(refreshExpiresAt.getDate() + refreshDays);
 
@@ -569,7 +621,12 @@ export class AuthService {
   /**
    * Log out a user session, revoking the UserSession and all associated refresh tokens.
    */
-  async logout(sessionId: string, userId: string, ipAddress?: string, userAgent?: string) {
+  async logout(
+    sessionId: string,
+    userId: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     await this.prisma.userSession.update({
       where: { id: sessionId },
       data: {
@@ -606,23 +663,25 @@ export class AuthService {
    * Password Recovery Step 1: Initiate Forgot Password
    * Searches by email or username, creates a recovery OTP, sends reset email via MailService.
    */
-  async forgotPassword(dto: ForgotPasswordDto, ipAddress?: string, userAgent?: string) {
+  async forgotPassword(
+    dto: ForgotPasswordDto,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     const identifier = dto.identifier.toLowerCase();
 
     // Query user by email OR username
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { email: identifier },
-          { username: identifier },
-        ],
+        OR: [{ email: identifier }, { username: identifier }],
       },
     });
 
     // Security best practice: return a success confirmation message even if user is not found to prevent user enumeration
     if (!user || !user.isActive) {
       return {
-        message: 'If the email or username exists in our system, a password reset OTP has been sent.',
+        message:
+          'If the email or username exists in our system, a password reset OTP has been sent.',
       };
     }
 
@@ -645,10 +704,13 @@ export class AuthService {
     await this.mailService.sendPasswordResetOtp(user.email, otp);
 
     // Log recovery code in server console strictly for developers
-    console.log(`\n=========================================\n🔑 [PASSWORD RESET OTP] sent to ${user.email}: \n👉 CODE: ${otp}\n=========================================\n`);
+    console.log(
+      `\n=========================================\n🔑 [PASSWORD RESET OTP] sent to ${user.email}: \n👉 CODE: ${otp}\n=========================================\n`,
+    );
 
     return {
-      message: 'If the email or username exists in our system, a password reset OTP has been sent.',
+      message:
+        'If the email or username exists in our system, a password reset OTP has been sent.',
     };
   }
 
@@ -661,10 +723,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { email: identifier },
-          { username: identifier },
-        ],
+        OR: [{ email: identifier }, { username: identifier }],
       },
     });
 
@@ -699,7 +758,8 @@ export class AuthService {
 
     return {
       success: true,
-      message: 'Password reset OTP code verified successfully. You can now reset your password.',
+      message:
+        'Password reset OTP code verified successfully. You can now reset your password.',
     };
   }
 
@@ -709,7 +769,11 @@ export class AuthService {
    * Confirms passwords, validates OTP, hashes new password, revokes all sessions,
    * and triggers reset success confirmation email.
    */
-  async resetPasswordComplete(dto: ResetPasswordCompleteDto, ipAddress?: string, userAgent?: string) {
+  async resetPasswordComplete(
+    dto: ResetPasswordCompleteDto,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     if (dto.password !== dto.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }
@@ -719,10 +783,7 @@ export class AuthService {
     // Query user by email OR username
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { email: identifier },
-          { username: identifier },
-        ],
+        OR: [{ email: identifier }, { username: identifier }],
       },
     });
 
@@ -730,7 +791,10 @@ export class AuthService {
       throw new UnauthorizedException('User account not found or inactive');
     }
 
-    const tokenHash = crypto.createHash('sha256').update(dto.code).digest('hex');
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(dto.code)
+      .digest('hex');
 
     // Retrieve active password reset token by OTP code to ensure verification state
     const resetTokenRecord = await this.prisma.passwordResetToken.findFirst({
@@ -775,7 +839,10 @@ export class AuthService {
     });
 
     // Trigger reset success alert email
-    await this.mailService.sendPasswordResetSuccessNotification(user.email, user.firstName ?? undefined);
+    await this.mailService.sendPasswordResetSuccessNotification(
+      user.email,
+      user.firstName ?? undefined,
+    );
 
     // Create Audit Log
     await this.prisma.auditLog.create({
@@ -792,16 +859,29 @@ export class AuthService {
 
     return {
       success: true,
-      message: 'Your password has been successfully updated. Please log in manually with your new password.',
+      message:
+        'Your password has been successfully updated. Please log in manually with your new password.',
     };
   }
 
   /**
    * Google OAuth code exchange and user authentication.
    */
-  async googleLogin(code: string, state?: string, expectedState?: string, ipAddress?: string, userAgent?: string) {
-    if (state !== undefined && expectedState !== undefined && state !== expectedState) {
-      throw new UnauthorizedException('OAuth state mismatch. Possible CSRF attack.');
+  async googleLogin(
+    code: string,
+    state?: string,
+    expectedState?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    if (
+      state !== undefined &&
+      expectedState !== undefined &&
+      state !== expectedState
+    ) {
+      throw new UnauthorizedException(
+        'OAuth state mismatch. Possible CSRF attack.',
+      );
     }
 
     let email = '';
@@ -811,11 +891,19 @@ export class AuthService {
     let avatarUrl = '';
 
     const clientId = this.configService.get<string>('oauth.google.clientId');
-    const clientSecret = this.configService.get<string>('oauth.google.clientSecret');
-    const callbackUrl = this.configService.get<string>('oauth.google.callbackUrl');
+    const clientSecret = this.configService.get<string>(
+      'oauth.google.clientSecret',
+    );
+    const callbackUrl = this.configService.get<string>(
+      'oauth.google.callbackUrl',
+    );
 
     // Developer friendly local testing mock fallback
-    if (code.startsWith('mock-') || !clientId || clientId.includes('your-google')) {
+    if (
+      code.startsWith('mock-') ||
+      !clientId ||
+      clientId.includes('your-google')
+    ) {
       email = 'google-user@demo.com';
       providerId = 'google-sso-123456';
       firstName = 'Google';
@@ -837,13 +925,18 @@ export class AuthService {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(`Google token exchange failed: ${JSON.stringify(errorData)}`);
+          throw new Error(
+            `Google token exchange failed: ${JSON.stringify(errorData)}`,
+          );
         }
 
         const tokenData = await response.json();
-        const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${tokenData.access_token}` },
-        });
+        const profileResponse = await fetch(
+          'https://www.googleapis.com/oauth2/v3/userinfo',
+          {
+            headers: { Authorization: `Bearer ${tokenData.access_token}` },
+          },
+        );
 
         if (!profileResponse.ok) {
           throw new Error('Failed to retrieve Google user profile');
@@ -860,15 +953,36 @@ export class AuthService {
       }
     }
 
-    return this.handleOAuthLogin('google', providerId, email, firstName, lastName, avatarUrl, ipAddress, userAgent);
+    return this.handleOAuthLogin(
+      'google',
+      providerId,
+      email,
+      firstName,
+      lastName,
+      avatarUrl,
+      ipAddress,
+      userAgent,
+    );
   }
 
   /**
    * GitHub OAuth code exchange and user authentication.
    */
-  async githubLogin(code: string, state?: string, expectedState?: string, ipAddress?: string, userAgent?: string) {
-    if (state !== undefined && expectedState !== undefined && state !== expectedState) {
-      throw new UnauthorizedException('OAuth state mismatch. Possible CSRF attack.');
+  async githubLogin(
+    code: string,
+    state?: string,
+    expectedState?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    if (
+      state !== undefined &&
+      expectedState !== undefined &&
+      state !== expectedState
+    ) {
+      throw new UnauthorizedException(
+        'OAuth state mismatch. Possible CSRF attack.',
+      );
     }
 
     let email = '';
@@ -877,30 +991,41 @@ export class AuthService {
     let avatarUrl = '';
 
     const clientId = this.configService.get<string>('oauth.github.clientId');
-    const clientSecret = this.configService.get<string>('oauth.github.clientSecret');
-    const callbackUrl = this.configService.get<string>('oauth.github.callbackUrl');
+    const clientSecret = this.configService.get<string>(
+      'oauth.github.clientSecret',
+    );
+    const callbackUrl = this.configService.get<string>(
+      'oauth.github.callbackUrl',
+    );
 
     // Developer friendly local testing mock fallback
-    if (code.startsWith('mock-') || !clientId || clientId.includes('your-github')) {
+    if (
+      code.startsWith('mock-') ||
+      !clientId ||
+      clientId.includes('your-github')
+    ) {
       email = 'github-user@demo.com';
       providerId = 'github-sso-123456';
       name = 'GitHub Tester';
       avatarUrl = 'https://avatars.githubusercontent.com/u/mock';
     } else {
       try {
-        const response = await fetch('https://github.com/login/oauth/access_token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
+        const response = await fetch(
+          'https://github.com/login/oauth/access_token',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify({
+              client_id: clientId,
+              client_secret: clientSecret,
+              code,
+              redirect_uri: callbackUrl,
+            }),
           },
-          body: JSON.stringify({
-            client_id: clientId,
-            client_secret: clientSecret,
-            code,
-            redirect_uri: callbackUrl,
-          }),
-        });
+        );
 
         if (!response.ok) {
           throw new Error('GitHub token exchange failed');
@@ -908,7 +1033,9 @@ export class AuthService {
 
         const tokenData = await response.json();
         if (tokenData.error) {
-          throw new Error(`GitHub OAuth error: ${tokenData.error_description || tokenData.error}`);
+          throw new Error(
+            `GitHub OAuth error: ${tokenData.error_description || tokenData.error}`,
+          );
         }
 
         // Fetch profile
@@ -931,21 +1058,28 @@ export class AuthService {
 
         // Fetch primary verified email if private
         if (!email) {
-          const emailsResponse = await fetch('https://api.github.com/user/emails', {
-            headers: {
-              Authorization: `token ${tokenData.access_token}`,
-              'User-Agent': 'NestJS-Fastify-SaaS-App',
+          const emailsResponse = await fetch(
+            'https://api.github.com/user/emails',
+            {
+              headers: {
+                Authorization: `token ${tokenData.access_token}`,
+                'User-Agent': 'NestJS-Fastify-SaaS-App',
+              },
             },
-          });
+          );
 
           if (emailsResponse.ok) {
             const emails = await emailsResponse.json();
-            email = emails.find((e: any) => e.primary && e.verified)?.email || emails[0]?.email;
+            email =
+              emails.find((e: any) => e.primary && e.verified)?.email ||
+              emails[0]?.email;
           }
         }
 
         if (!email) {
-          throw new Error('No verified email address is associated with this GitHub account');
+          throw new Error(
+            'No verified email address is associated with this GitHub account',
+          );
         }
       } catch (err: any) {
         throw new UnauthorizedException(`GitHub login failed: ${err.message}`);
@@ -954,7 +1088,16 @@ export class AuthService {
 
     const [firstName = '', lastName = ''] = name.split(' ');
 
-    return this.handleOAuthLogin('github', providerId, email, firstName, lastName, avatarUrl, ipAddress, userAgent);
+    return this.handleOAuthLogin(
+      'github',
+      providerId,
+      email,
+      firstName,
+      lastName,
+      avatarUrl,
+      ipAddress,
+      userAgent,
+    );
   }
 
   /**
@@ -1052,7 +1195,10 @@ export class AuthService {
         });
 
         // Trigger welcoming completed email
-        await this.mailService.sendWelcomeNotification(user.email, user.firstName ?? undefined);
+        await this.mailService.sendWelcomeNotification(
+          user.email,
+          user.firstName ?? undefined,
+        );
       }
     }
 
@@ -1083,11 +1229,17 @@ export class AuthService {
       },
     });
 
-    const tokens = await this.generateTokenPair(user.id, user.email, user.username, session.id);
+    const tokens = await this.generateTokenPair(
+      user.id,
+      user.email,
+      user.username,
+      session.id,
+    );
 
     const refreshTokenHash = this.hashToken(tokens.refreshToken);
     const refreshExpiresAt = new Date();
-    const refreshTTL = this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d';
+    const refreshTTL =
+      this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d';
     const refreshDays = this.parseDurationToDays(refreshTTL);
     refreshExpiresAt.setDate(refreshExpiresAt.getDate() + refreshDays);
 
@@ -1144,13 +1296,16 @@ export class AuthService {
     if (!user) {
       return {
         success: true,
-        message: 'If this email address is registered in a pending state, a fresh verification OTP has been sent.',
+        message:
+          'If this email address is registered in a pending state, a fresh verification OTP has been sent.',
       };
     }
 
     // If user is already active, prevent OTP spamming
     if (user.isActive || user.passwordHash) {
-      throw new BadRequestException('This email address is already fully registered and verified. Please log in.');
+      throw new BadRequestException(
+        'This email address is already fully registered and verified. Please log in.',
+      );
     }
 
     // Revoke any existing active unused verification tokens for this user
@@ -1186,11 +1341,14 @@ export class AuthService {
     await this.mailService.sendRegistrationOtp(user.email, otp);
 
     // Print verification code to console logs strictly for local developers
-    console.log(`\n=========================================\n🌱 [RESEND OTP] sent to ${user.email}: \n👉 CODE: ${otp}\n=========================================\n`);
+    console.log(
+      `\n=========================================\n🌱 [RESEND OTP] sent to ${user.email}: \n👉 CODE: ${otp}\n=========================================\n`,
+    );
 
     return {
       success: true,
-      message: 'If this email address is registered in a pending state, a fresh verification OTP has been sent.',
+      message:
+        'If this email address is registered in a pending state, a fresh verification OTP has been sent.',
     };
   }
 
@@ -1226,7 +1384,11 @@ export class AuthService {
    * Change user password from within active authenticated session.
    * Forces revocation on all other devices except the current active session.
    */
-  async changePassword(userId: string, currentSessionId: string, dto: ChangePasswordDto) {
+  async changePassword(
+    userId: string,
+    currentSessionId: string,
+    dto: ChangePasswordDto,
+  ) {
     if (dto.newPassword !== dto.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }
@@ -1241,7 +1403,10 @@ export class AuthService {
 
     // Verify current password if user has credentials (optional for SSO users who haven't set a password yet)
     if (user.passwordHash) {
-      const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+      const isPasswordValid = await bcrypt.compare(
+        dto.currentPassword,
+        user.passwordHash,
+      );
       if (!isPasswordValid) {
         throw new UnauthorizedException('Incorrect current password');
       }
@@ -1282,7 +1447,10 @@ export class AuthService {
     });
 
     // Trigger password reset alert email notification
-    await this.mailService.sendPasswordResetSuccessNotification(user.email, user.firstName ?? undefined);
+    await this.mailService.sendPasswordResetSuccessNotification(
+      user.email,
+      user.firstName ?? undefined,
+    );
 
     // Create Audit Log
     await this.prisma.auditLog.create({
@@ -1297,7 +1465,8 @@ export class AuthService {
 
     return {
       success: true,
-      message: 'Password successfully updated. All other active sessions have been revoked.',
+      message:
+        'Password successfully updated. All other active sessions have been revoked.',
     };
   }
 
@@ -1308,7 +1477,8 @@ export class AuthService {
       where: { userId: user.id },
     });
     if (!mfaConfig || !mfaConfig.isEnabled) return null;
-    const mfaExpiry = this.configService.get<string>('mfa.pendingTokenExpiry') ?? '5m';
+    const mfaExpiry =
+      this.configService.get<string>('mfa.pendingTokenExpiry') ?? '5m';
     const mfaPendingToken = await this.jwtService.signAsync(
       { sub: user.id, type: 'mfa_pending' },
       {
@@ -1345,13 +1515,15 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>('jwt.secret'),
-        expiresIn: (this.configService.get<string>('jwt.expiresIn') ?? '15m') as any,
+        expiresIn: (this.configService.get<string>('jwt.expiresIn') ??
+          '15m') as any,
       }),
       this.jwtService.signAsync(
         { sub: userId, sessionId },
         {
           secret: this.configService.get<string>('jwt.refreshSecret'),
-          expiresIn: (this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d') as any,
+          expiresIn: (this.configService.get<string>('jwt.refreshExpiresIn') ??
+            '7d') as any,
         },
       ),
     ]);
@@ -1368,7 +1540,11 @@ export class AuthService {
     platform?: string;
   } {
     if (!userAgent) {
-      return { deviceName: 'Unknown Device', deviceType: 'unknown', platform: 'unknown' };
+      return {
+        deviceName: 'Unknown Device',
+        deviceType: 'unknown',
+        platform: 'unknown',
+      };
     }
 
     let platform = 'unknown';
@@ -1379,13 +1555,18 @@ export class AuthService {
 
     // Check platform
     if (ua.includes('windows')) platform = 'Windows';
-    else if (ua.includes('macintosh') || ua.includes('mac os')) platform = 'macOS';
+    else if (ua.includes('macintosh') || ua.includes('mac os'))
+      platform = 'macOS';
     else if (ua.includes('linux')) platform = 'Linux';
     else if (ua.includes('android')) platform = 'Android';
     else if (ua.includes('iphone') || ua.includes('ipad')) platform = 'iOS';
 
     // Check device type
-    if (ua.includes('mobi') || ua.includes('iphone') || ua.includes('android')) {
+    if (
+      ua.includes('mobi') ||
+      ua.includes('iphone') ||
+      ua.includes('android')
+    ) {
       deviceType = 'mobile';
       deviceName = ua.includes('iphone') ? 'iPhone' : 'Android Phone';
     } else if (ua.includes('ipad') || ua.includes('tablet')) {

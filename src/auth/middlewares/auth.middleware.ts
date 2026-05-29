@@ -31,7 +31,9 @@ export class AuthMiddleware implements NestMiddleware {
       });
 
       if (payload.type === 'mfa_pending') {
-        this.logger.warn(`Blocked mfa_pending token attempt for sub=${payload.sub}`);
+        this.logger.warn(
+          `Blocked mfa_pending token attempt for sub=${payload.sub}`,
+        );
         return next();
       }
 
@@ -63,7 +65,9 @@ export class AuthMiddleware implements NestMiddleware {
         user.passwordChangedAt &&
         payload.iat * 1000 < user.passwordChangedAt.getTime()
       ) {
-        this.logger.debug(`Token predates password change for userId=${user.id}`);
+        this.logger.debug(
+          `Token predates password change for userId=${user.id}`,
+        );
         return next();
       }
 
@@ -86,14 +90,16 @@ export class AuthMiddleware implements NestMiddleware {
       };
 
       req.user = requestUser;
-      
+
       // Fastify adapter sets req.raw for raw node request, support both environments
       if (req.raw) {
         req.raw.user = requestUser;
       }
     } catch (error) {
       // We do not throw exceptions in middleware to support public routes gracefully
-      this.logger.debug(`Auth token validation failed: ${(error as Error).message}`);
+      this.logger.debug(
+        `Auth token validation failed: ${(error as Error).message}`,
+      );
     }
 
     next();

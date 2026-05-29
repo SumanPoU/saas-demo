@@ -26,7 +26,8 @@ export class AppController {
   @ApiOperation({ summary: 'Get application info and status' })
   @ApiResponse({
     status: 200,
-    description: 'Application metadata and system status information retrieved successfully.',
+    description:
+      'Application metadata and system status information retrieved successfully.',
   })
   root() {
     return this.appService.getApiInfo();
@@ -38,7 +39,8 @@ export class AppController {
   @ApiOperation({ summary: 'Perform a comprehensive system health check' })
   @ApiResponse({
     status: 200,
-    description: 'Returns health status of heap memory, RSS memory, and disk storage.',
+    description:
+      'Returns health status of heap memory, RSS memory, and disk storage.',
   })
   check() {
     return this.health.check([

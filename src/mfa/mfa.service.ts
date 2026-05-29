@@ -38,7 +38,9 @@ export class MfaService {
   private encrypt(text: string): string {
     const rawKey = this.config.get<string>('mfa.encryptionKey');
     if (!rawKey || rawKey.length !== 64) {
-      throw new Error('MFA_ENCRYPTION_KEY must be a 64-character hex string (32 bytes).');
+      throw new Error(
+        'MFA_ENCRYPTION_KEY must be a 64-character hex string (32 bytes).',
+      );
     }
     const key = Buffer.from(rawKey, 'hex');
     const iv = crypto.randomBytes(16);
@@ -54,7 +56,9 @@ export class MfaService {
   private decrypt(text: string): string {
     const rawKey = this.config.get<string>('mfa.encryptionKey');
     if (!rawKey || rawKey.length !== 64) {
-      throw new Error('MFA_ENCRYPTION_KEY must be a 64-character hex string (32 bytes).');
+      throw new Error(
+        'MFA_ENCRYPTION_KEY must be a 64-character hex string (32 bytes).',
+      );
     }
     const key = Buffer.from(rawKey, 'hex');
     const parts = text.split(':');
@@ -131,7 +135,9 @@ export class MfaService {
     }
 
     if (this.isTotpCodeUsed(userId, code)) {
-      throw new UnauthorizedException('TOTP code has already been used. Wait for the next code.');
+      throw new UnauthorizedException(
+        'TOTP code has already been used. Wait for the next code.',
+      );
     }
 
     const decryptedSecret = this.decrypt(mfaConfig.totpSecret);
@@ -196,11 +202,15 @@ export class MfaService {
     });
 
     if (!mfaConfig || !mfaConfig.totpSecret || !mfaConfig.isEnabled) {
-      throw new BadRequestException('MFA must be active to regenerate backup codes.');
+      throw new BadRequestException(
+        'MFA must be active to regenerate backup codes.',
+      );
     }
 
     if (this.isTotpCodeUsed(userId, code)) {
-      throw new UnauthorizedException('TOTP code has already been used. Wait for the next code.');
+      throw new UnauthorizedException(
+        'TOTP code has already been used. Wait for the next code.',
+      );
     }
 
     const decryptedSecret = this.decrypt(mfaConfig.totpSecret);
@@ -239,7 +249,8 @@ export class MfaService {
 
     return {
       success: true,
-      message: 'Backup codes successfully regenerated. Save these in a secure location.',
+      message:
+        'Backup codes successfully regenerated. Save these in a secure location.',
       data: {
         backupCodes,
       },
@@ -286,7 +297,9 @@ export class MfaService {
     if (isTotp) {
       // TOTP path
       if (this.isTotpCodeUsed(userId, cleanedCode)) {
-        throw new UnauthorizedException('TOTP code has already been used. Wait for the next code.');
+        throw new UnauthorizedException(
+          'TOTP code has already been used. Wait for the next code.',
+        );
       }
 
       const decryptedSecret = this.decrypt(mfaConfig.totpSecret!);
@@ -343,7 +356,8 @@ export class MfaService {
       });
 
       if (remainingUnused === 0) {
-        warning = 'You have used your last backup code. Please regenerate backup codes immediately.';
+        warning =
+          'You have used your last backup code. Please regenerate backup codes immediately.';
       }
     }
 
@@ -402,7 +416,9 @@ export class MfaService {
     });
 
     if (!deviceToken) {
-      throw new UnauthorizedException('Invalid or expired device verification link.');
+      throw new UnauthorizedException(
+        'Invalid or expired device verification link.',
+      );
     }
 
     await this.prisma.emailVerificationToken.update({
@@ -444,7 +460,9 @@ export class MfaService {
     }
 
     if (this.isTotpCodeUsed(userId, code)) {
-      throw new UnauthorizedException('TOTP code has already been used. Wait for the next code.');
+      throw new UnauthorizedException(
+        'TOTP code has already been used. Wait for the next code.',
+      );
     }
 
     const decryptedSecret = this.decrypt(mfaConfig.totpSecret);
@@ -508,7 +526,10 @@ export class MfaService {
     }
 
     const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour TTL
 
     await this.prisma.mfaRecoveryToken.create({
@@ -522,7 +543,7 @@ export class MfaService {
 
     // Dispatch recovery notification via MailService
     const recoveryLink = `${this.config.get<string>('frontendUrl')}/auth/recover-mfa?token=${rawToken}`;
-    
+
     // Style template
     const subject = 'Disable Multi-Factor Authentication Recovery Link';
     const text = `Please use this link to recover your account and disable MFA: ${recoveryLink}`;
@@ -543,7 +564,9 @@ export class MfaService {
     await this.mailService.sendEmail(user.email, subject, text, html);
 
     // Log to console for dev purposes
-    console.log(`\n=========================================\n📬 [MFA RECOVERY LINK]: \n👉 LINK: ${recoveryLink}\n=========================================\n`);
+    console.log(
+      `\n=========================================\n📬 [MFA RECOVERY LINK]: \n👉 LINK: ${recoveryLink}\n=========================================\n`,
+    );
 
     return {
       success: true,
@@ -658,7 +681,10 @@ export class MfaService {
     for (let i = 0; i < 8; i++) {
       const rawCode = crypto.randomBytes(5).toString('hex').toUpperCase(); // 10 chars, ~40 bits
       plainCodes.push(rawCode);
-      hashedData.push({ codeHash: await bcrypt.hash(rawCode, 10), mfaConfigId });
+      hashedData.push({
+        codeHash: await bcrypt.hash(rawCode, 10),
+        mfaConfigId,
+      });
     }
     return { plainCodes, hashedData };
   }
