@@ -14,6 +14,8 @@ import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { MfaModule } from './mfa/mfa.module';
+import { RolesModule } from './roles/roles.module';
+import { PermissionsModule } from './permissions/permissions.module';
 import { AuthGuard } from './auth/guards/auth.guard';
 import { AuthMiddleware } from './auth/middlewares/auth.middleware';
 import { MailModule } from './mail/mail.module';
@@ -30,6 +32,8 @@ import { MailModule } from './mail/mail.module';
     PrismaModule,
     AuthModule,
     MfaModule,
+    RolesModule,
+    PermissionsModule,
     MailModule,
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
