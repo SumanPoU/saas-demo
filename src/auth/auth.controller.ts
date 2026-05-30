@@ -29,6 +29,7 @@ import { ResendOtpDto } from './dto/resend-otp.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { ResponseMessage } from '../common/response';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -38,6 +39,9 @@ export class AuthController {
   @Public()
   @Post('register/initiate')
   @HttpCode(HttpStatus.CREATED)
+  @ResponseMessage(
+    'Registration initiated. Please check your email for the OTP verification code.',
+  )
   @ApiOperation({
     summary:
       'Step 1: Initiate registration, generates a pending user and sends an email verification OTP',
@@ -55,6 +59,7 @@ export class AuthController {
   @Public()
   @Post('register/resend-otp')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('New verification OTP sent successfully')
   @ApiOperation({
     summary: 'Step 1.5: Resend a fresh email verification OTP code',
   })
@@ -70,6 +75,7 @@ export class AuthController {
   @Public()
   @Post('register/verify-otp')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('OTP successfully verified')
   @ApiOperation({ summary: 'Step 2: Verify the registration OTP code' })
   @ApiResponse({ status: 200, description: 'OTP successfully verified' })
   @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
@@ -80,6 +86,7 @@ export class AuthController {
   @Public()
   @Post('register/complete')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Registration complete. You can now login.')
   @ApiOperation({
     summary:
       'Step 3: Complete registration by setting the user password (manual login required after)',
@@ -101,6 +108,7 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Login successful')
   @ApiOperation({ summary: 'Log in with username or email and password' })
   @ApiResponse({
     status: 200,
@@ -119,6 +127,7 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Tokens successfully refreshed')
   @ApiOperation({ summary: 'Rotate JWT access and refresh tokens' })
   @ApiResponse({ status: 200, description: 'New token pair generated' })
   @ApiResponse({
@@ -133,7 +142,8 @@ export class AuthController {
 
   @ApiBearerAuth('JWT')
   @Post('logout')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ResponseMessage('Successfully logged out')
   @ApiOperation({ summary: 'Log out from the current active session' })
   @ApiResponse({ status: 200, description: 'Session revoked successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -151,6 +161,7 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Password recovery request initiated')
   @ApiOperation({
     summary:
       'Step 1: Request password recovery using username or email address',
@@ -165,6 +176,7 @@ export class AuthController {
   @Public()
   @Post('reset-password/verify')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Password recovery OTP verified successfully')
   @ApiOperation({ summary: 'Step 2: Verify the password recovery OTP code' })
   @ApiResponse({ status: 200, description: 'OTP verified successfully' })
   @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
@@ -175,6 +187,7 @@ export class AuthController {
   @Public()
   @Post('reset-password/complete')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Password reset successfully')
   @ApiOperation({
     summary:
       'Step 3: Complete password recovery by setting a new password using recovery identifier and OTP code',
@@ -200,6 +213,7 @@ export class AuthController {
   @Public()
   @Post('oauth/google')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Google login successful')
   @ApiOperation({
     summary:
       'Authenticate a user via Google Single Sign-On (SSO) code token exchange',
@@ -227,6 +241,7 @@ export class AuthController {
   @Public()
   @Post('oauth/github')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('GitHub login successful')
   @ApiOperation({
     summary:
       'Authenticate a user via GitHub Single Sign-On (SSO) code token exchange',
@@ -254,6 +269,7 @@ export class AuthController {
   @ApiBearerAuth('JWT')
   @Get('profile')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('User profile retrieved successfully')
   @ApiOperation({
     summary: 'Get the profile information of the currently authenticated user',
   })
@@ -269,6 +285,7 @@ export class AuthController {
   @ApiBearerAuth('JWT')
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Password changed successfully')
   @ApiOperation({
     summary: 'Change the password for the currently authenticated user',
   })

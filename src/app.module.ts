@@ -19,6 +19,7 @@ import { PermissionsModule } from './permissions/permissions.module';
 import { AuthGuard } from './auth/guards/auth.guard';
 import { AuthMiddleware } from './auth/middlewares/auth.middleware';
 import { MailModule } from './mail/mail.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { MailModule } from './mail/mail.module';
     RolesModule,
     PermissionsModule,
     MailModule,
+    CommonModule,
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService): ThrottlerModuleOptions => ({

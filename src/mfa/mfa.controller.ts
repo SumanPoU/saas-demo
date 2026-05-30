@@ -23,6 +23,7 @@ import {
 } from './dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { ResponseMessage } from '../common/response';
 
 @ApiTags('Multi-Factor Authentication')
 @Controller('mfa')
@@ -32,6 +33,7 @@ export class MfaController {
   @ApiBearerAuth('JWT')
   @Post('setup')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('MFA setup initiated successfully')
   @ApiOperation({
     summary: 'Step 1: Initiate MFA setup, generates a TOTP secret and QR code',
   })
@@ -47,6 +49,7 @@ export class MfaController {
   @ApiBearerAuth('JWT')
   @Post('verify-setup')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('MFA successfully enabled')
   @ApiOperation({
     summary:
       'Step 2: Verify code from authenticator app, enables MFA and returns backup codes',
@@ -66,6 +69,7 @@ export class MfaController {
   @ApiBearerAuth('JWT')
   @Post('backup-codes/regenerate')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Backup codes successfully regenerated')
   @ApiOperation({
     summary: 'Regenerate backup codes, revokes existing backup codes',
   })
@@ -87,6 +91,7 @@ export class MfaController {
   @Public()
   @Post('verify-login')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('MFA login successful')
   @ApiOperation({
     summary: 'Complete login using a TOTP code or a single-use backup code',
   })
@@ -112,6 +117,7 @@ export class MfaController {
   @Public()
   @Post('verify-device')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Device verified successfully')
   @ApiOperation({ summary: 'Verify and authorize a new login device' })
   @ApiResponse({
     status: 200,
@@ -128,6 +134,7 @@ export class MfaController {
   @ApiBearerAuth('JWT')
   @Post('disable')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('MFA deactivated successfully')
   @ApiOperation({ summary: 'Disable MFA on the account' })
   @ApiResponse({ status: 200, description: 'MFA successfully deactivated' })
   @ApiResponse({ status: 400, description: 'MFA is not active' })
@@ -142,6 +149,7 @@ export class MfaController {
   @Public()
   @Post('recover')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('MFA recovery request initiated')
   @ApiOperation({
     summary:
       'Step 1: Initiate MFA account recovery, dispatches recovery link to email',
@@ -154,6 +162,7 @@ export class MfaController {
   @Public()
   @Post('recover/verify')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Account successfully recovered and MFA disabled')
   @ApiOperation({
     summary:
       'Step 2: Complete account recovery using email recovery token to disable MFA',

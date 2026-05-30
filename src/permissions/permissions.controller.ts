@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -28,6 +29,8 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { PaginationQueryDto } from '../common/pagination';
+import { ResponseMessage } from '../common/response';
 
 @ApiTags('Permissions')
 @ApiBearerAuth('JWT')
@@ -40,6 +43,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:create')
   @HttpCode(HttpStatus.CREATED)
+  @ResponseMessage('Permission successfully created')
   @ApiOperation({ summary: 'Create a new permission' })
   @ApiResponse({ status: 201, description: 'Permission successfully created' })
   @ApiResponse({
@@ -58,13 +62,14 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:read')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Permissions retrieved successfully')
   @ApiOperation({
-    summary: 'Retrieve all permissions with their groups and roles',
+    summary: 'Retrieve all permissions with their groups and roles (Paginated)',
   })
-  @ApiResponse({ status: 200, description: 'List of all permissions returned' })
+  @ApiResponse({ status: 200, description: 'Paginated list of permissions returned' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getAllPermissions() {
-    return this.permissionsService.getAllPermissions();
+  async getAllPermissions(@Query() query: PaginationQueryDto) {
+    return this.permissionsService.getAllPermissions(query);
   }
 
   /**
@@ -75,6 +80,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:create')
   @HttpCode(HttpStatus.CREATED)
+  @ResponseMessage('Permission group successfully created')
   @ApiOperation({ summary: 'Create a new permission group' })
   @ApiResponse({
     status: 201,
@@ -96,6 +102,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:read')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Permission groups retrieved successfully')
   @ApiOperation({
     summary: 'Retrieve all permission groups with their permissions',
   })
@@ -112,6 +119,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:read')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Permission group details retrieved successfully')
   @ApiOperation({ summary: 'Retrieve a single permission group by ID' })
   @ApiResponse({
     status: 200,
@@ -127,6 +135,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:update')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Permission group successfully updated')
   @ApiOperation({ summary: 'Update a permission group name or description' })
   @ApiResponse({
     status: 200,
@@ -149,6 +158,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:delete')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ResponseMessage('Permission group successfully deleted')
   @ApiOperation({ summary: 'Delete a permission group' })
   @ApiResponse({
     status: 204,
@@ -164,6 +174,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:read')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Permission details retrieved successfully')
   @ApiOperation({ summary: 'Retrieve a single permission by ID' })
   @ApiResponse({ status: 200, description: 'Permission details returned' })
   @ApiResponse({ status: 404, description: 'Permission not found' })
@@ -176,6 +187,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:update')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Permission successfully updated')
   @ApiOperation({ summary: 'Update a permission name or description' })
   @ApiResponse({ status: 200, description: 'Permission successfully updated' })
   @ApiResponse({ status: 400, description: 'Permission name already taken' })
@@ -192,6 +204,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:delete')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ResponseMessage('Permission successfully deleted')
   @ApiOperation({
     summary: 'Delete a permission, blocked if assigned to any role',
   })
@@ -210,6 +223,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:update')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Permission successfully assigned to group(s)')
   @ApiOperation({ summary: 'Assign a permission to one or more groups' })
   @ApiResponse({
     status: 200,
@@ -235,6 +249,7 @@ export class PermissionsController {
   @Roles('Admin')
   @Permissions('permissions:update')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ResponseMessage('Permission successfully removed from group(s)')
   @ApiOperation({ summary: 'Remove a permission from one or more groups' })
   @ApiResponse({
     status: 204,

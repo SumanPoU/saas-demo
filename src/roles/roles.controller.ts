@@ -27,6 +27,7 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { ResponseMessage } from '../common/response';
 
 @ApiTags('Roles')
 @ApiBearerAuth('JWT')
@@ -39,6 +40,7 @@ export class RolesController {
   @Roles('Admin')
   @Permissions('roles:create')
   @HttpCode(HttpStatus.CREATED)
+  @ResponseMessage('Role successfully created')
   @ApiOperation({ summary: 'Create a new role' })
   @ApiResponse({ status: 201, description: 'Role successfully created' })
   @ApiResponse({
@@ -54,6 +56,7 @@ export class RolesController {
   @Roles('Admin')
   @Permissions('roles:read')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Roles retrieved successfully')
   @ApiOperation({
     summary: 'Retrieve all roles with their permissions and users',
   })
@@ -67,6 +70,7 @@ export class RolesController {
   @Roles('Admin')
   @Permissions('roles:read')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('User roles retrieved successfully')
   @ApiOperation({ summary: 'Retrieve all roles assigned to a specific user' })
   @ApiResponse({ status: 200, description: "User's roles returned" })
   @ApiResponse({ status: 404, description: 'User not found' })
@@ -79,6 +83,7 @@ export class RolesController {
   @Roles('Admin')
   @Permissions('roles:read')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Role details retrieved successfully')
   @ApiOperation({ summary: 'Retrieve a single role by ID' })
   @ApiResponse({ status: 200, description: 'Role details returned' })
   @ApiResponse({ status: 404, description: 'Role not found' })
@@ -91,6 +96,7 @@ export class RolesController {
   @Roles('Admin')
   @Permissions('roles:update')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Role successfully updated')
   @ApiOperation({ summary: 'Update a role name, description, or default flag' })
   @ApiResponse({ status: 200, description: 'Role successfully updated' })
   @ApiResponse({ status: 400, description: 'Role name already taken' })
@@ -104,6 +110,7 @@ export class RolesController {
   @Roles('Admin')
   @Permissions('roles:delete')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ResponseMessage('Role successfully deleted')
   @ApiOperation({ summary: 'Delete a role, blocked if assigned to any user' })
   @ApiResponse({ status: 204, description: 'Role successfully deleted' })
   @ApiResponse({
@@ -120,6 +127,7 @@ export class RolesController {
   @Roles('Admin')
   @Permissions('roles:update')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Permissions successfully assigned to role')
   @ApiOperation({ summary: 'Assign one or more permissions to a role' })
   @ApiResponse({
     status: 200,
@@ -147,6 +155,7 @@ export class RolesController {
   @Roles('Admin')
   @Permissions('roles:update')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ResponseMessage('Permissions successfully removed from role')
   @ApiOperation({ summary: 'Remove one or more permissions from a role' })
   @ApiResponse({
     status: 204,
@@ -168,6 +177,7 @@ export class RolesController {
   @Roles('Admin')
   @Permissions('roles:assign')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Role successfully assigned to user(s)')
   @ApiOperation({ summary: 'Assign a role to one or more users' })
   @ApiResponse({
     status: 200,
@@ -190,6 +200,7 @@ export class RolesController {
   @Roles('Admin')
   @Permissions('roles:assign')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ResponseMessage('Role successfully removed from user(s)')
   @ApiOperation({ summary: 'Remove a role from one or more users' })
   @ApiResponse({
     status: 204,
@@ -203,5 +214,4 @@ export class RolesController {
   ) {
     await this.rolesService.removeRoleFromUsers(roleId, dto.userIds);
   }
-
 }

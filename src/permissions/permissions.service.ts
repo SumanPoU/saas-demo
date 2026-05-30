@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationService, PaginationQueryDto, PaginatedResult } from '../common/pagination';
 import {
   CreatePermissionDto,
   UpdatePermissionDto,
@@ -13,7 +14,10 @@ import {
 
 @Injectable()
 export class PermissionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly pagination: PaginationService,
+  ) {}
 
   /**
    * Create Permission
@@ -48,15 +52,30 @@ export class PermissionsService {
    * Returns every permission ordered by creation date, including their
    * associated groups, roles, and the admin who created each entry.
    */
-  async getAllPermissions() {
-    return this.prisma.permission.findMany({
-      include: {
-        groups: true,
-        roles: true,
-        createdUser: { select: { id: true, username: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async getAllPermissions(query: PaginationQueryDto) {
+    let where = {};
+    if (query.search) {
+      where = {
+        OR: [
+          { name: { contains: query.search, mode: 'insensitive' } },
+          { description: { contains: query.search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    return this.pagination.paginate(
+      this.prisma.permission,
+      query,
+      {
+        where,
+        include: {
+          groups: true,
+          roles: true,
+          createdUser: { select: { id: true, username: true } },
+        },
+        orderBy: { name: 'asc' },
+      }
+    );
   }
 
   /**

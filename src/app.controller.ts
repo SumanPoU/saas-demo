@@ -9,6 +9,7 @@ import {
 } from '@nestjs/terminus';
 import { AppService } from './app.service';
 import { Public } from './auth/decorators/public.decorator';
+import { ResponseMessage } from './common/response';
 
 @ApiTags('System')
 @SkipThrottle()
@@ -23,6 +24,7 @@ export class AppController {
 
   @Public()
   @Get()
+  @ResponseMessage('Application info retrieved successfully')
   @ApiOperation({ summary: 'Get application info and status' })
   @ApiResponse({
     status: 200,
@@ -35,6 +37,7 @@ export class AppController {
 
   @Public()
   @Get('health')
+  @ResponseMessage('System health check completed successfully')
   @HealthCheck()
   @ApiOperation({ summary: 'Perform a comprehensive system health check' })
   @ApiResponse({

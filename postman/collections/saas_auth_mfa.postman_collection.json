@@ -1146,6 +1146,7 @@
                     {
                       "listen": "test",
                       "script": {
+                        "id": "e7157d9b-8a8d-4510-b8da-11846797704c",
                         "exec": [
                           "const response = pm.response.json();",
                           "const data = response.data || response;",
@@ -1155,7 +1156,21 @@
                           "    pm.environment.set(\"permissionId\", item.id);",
                           "}"
                         ],
-                        "type": "javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "id": "f44ec7db-8ef1-4652-87ff-274f380ee845",
+                        "exec": [
+                          ""
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
@@ -1174,13 +1189,29 @@
                     "method": "GET",
                     "header": [],
                     "url": {
-                      "raw": "{{baseUrl}}/v1/permissions",
+                      "raw": "{{baseUrl}}/v1/permissions?page=1&limit=25&search=ss",
                       "host": [
                         "{{baseUrl}}"
                       ],
                       "path": [
                         "v1",
                         "permissions"
+                      ],
+                      "query": [
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "uuid": "851e9704-2632-4e8d-8d6d-52b6b5a010d5"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "uuid": "cf5759ac-7f63-4516-a5f9-8e67c3487863"
+                        },
+                        {
+                          "key": "search",
+                          "value": "ss"
+                        }
                       ]
                     },
                     "description": "Lists permissions and captures the first permission id when present."
