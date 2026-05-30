@@ -14,20 +14,21 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid()) @db.Uuid
-  username      String    @unique
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  passwordHash  String?
-  firstName     String?
-  lastName      String?
-  avatarUrl     String?
-  isActive      Boolean   @default(true)
-  isSuperAdmin  Boolean   @default(false)
-  lastLoginAt   DateTime?
+  id                String    @id @default(uuid()) @db.Uuid
+  username          String    @unique
+  email             String    @unique
+  emailVerified     Boolean   @default(false)
+  passwordHash      String?
+  mustChangePassword Boolean  @default(false)
+  firstName         String?
+  lastName          String?
+  avatarUrl         String?
+  isActive          Boolean   @default(true)
+  isSuperAdmin      Boolean   @default(false)
+  lastLoginAt       DateTime?
   passwordChangedAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   // Role relations
   roles                   Role[]           @relation("UserRoles")
@@ -61,7 +62,6 @@ model Role {
   updatedAt   DateTime @updatedAt
 
   users           User[]           @relation("UserRoles")
-  permissions     Permission[]     @relation("RolePermissions")
   rolePermissions RolePermission[]
 
   @@map("roles")
@@ -73,7 +73,6 @@ model Permission {
   description String?
 
   groups      PermissionGroup[] @relation("GroupPermissions")
-  roles       Role[]            @relation("RolePermissions")
   createdBy   String?           @db.Uuid
   createdUser User?             @relation("PermissionCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
 
@@ -275,8 +274,8 @@ model OAuthAccount {
   id         String   @id @default(uuid()) @db.Uuid
   userId     String   @db.Uuid
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider   String   // e.g. "google", "github"
-  providerId String   // unique id on Google/GitHub
+  provider   String // e.g. "google", "github"
+  providerId String // unique id on Google/GitHub
   createdAt  DateTime @default(now())
 
   @@unique([provider, providerId])
@@ -284,10 +283,10 @@ model OAuthAccount {
 }
 
 model MfaRecoveryToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenantId  String
+  id       String @id @default(uuid()) @db.Uuid
+  userId   String @db.Uuid
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId String
 
   tokenHash String    @unique
   isUsed    Boolean   @default(false)

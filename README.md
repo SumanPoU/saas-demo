@@ -45,8 +45,14 @@ Create a `.env` or `.env.development.local` file in the root directory and confi
 ```env
 # Example .env configuration
 DATABASE_URL="postgresql://user:password@localhost:5432/saas_db?schema=public"
-JWT_SECRET="your-super-secret-jwt-key"
+JWT_SECRET="use-at-least-32-random-characters"
+JWT_REFRESH_SECRET="use-a-different-32-character-random-secret"
+SEED_SUPERADMIN_PASSWORD="set-a-local-only-development-password"
+SEED_USER_PASSWORD="set-a-local-only-development-password"
 ```
+
+Never commit real secrets, OTPs, recovery links, refresh tokens, or seeded
+passwords. Keep local values in ignored environment files only.
 
 ### 3. Database Migration & Prisma Client
 Ensure your local development server is stopped before generating the Prisma client to prevent file lock (`EPERM`) errors.

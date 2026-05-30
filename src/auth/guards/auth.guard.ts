@@ -41,6 +41,24 @@ export class AuthGuard implements CanActivate {
       );
     }
 
+    if (user.mustChangePassword) {
+      const path = request.url?.split('?')[0] ?? '';
+      const allowedWhileChangingPassword = [
+        '/auth/profile',
+        '/auth/change-password',
+        '/auth/logout',
+        '/v1/auth/profile',
+        '/v1/auth/change-password',
+        '/v1/auth/logout',
+      ].some((allowedPath) => path.endsWith(allowedPath));
+
+      if (!allowedWhileChangingPassword) {
+        throw new ForbiddenException(
+          'Password change is required before accessing this resource.',
+        );
+      }
+    }
+
     // Role enforcement
     const requiredRoles = this.reflector.getAllAndOverride<string[]>(
       ROLES_KEY,

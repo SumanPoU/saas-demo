@@ -8,6 +8,7 @@ import {
   Req,
 } from '@nestjs/common';
 import {
+  ApiBody,
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
@@ -27,6 +28,7 @@ import { ResetPasswordCompleteDto } from './dto/reset-password-complete.dto';
 import { OAuthDto } from './dto/oauth.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { SetRequiredPasswordDto } from './dto/set-required-password.dto';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ResponseMessage } from '../common/response';
@@ -109,10 +111,59 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Login successful')
-  @ApiOperation({ summary: 'Log in with username or email and password' })
+  @ApiOperation({
+    summary: 'Log in with username or email and password',
+    description:
+      'Returns access and refresh tokens for normal users. If the password is system-generated and must be changed, no auth tokens are issued; the response includes passwordChangeToken and nextStep details for POST /auth/set-required-password.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Successful login, tokens returned',
+    description:
+      'Successful login. Either tokens are returned, or passwordChangeToken is returned when requiresPasswordChange is true.',
+    schema: {
+      oneOf: [
+        {
+          example: {
+            success: true,
+            message: 'Login successful',
+            data: {
+              tokens: {
+                accessToken: 'jwt-access-token',
+                refreshToken: 'jwt-refresh-token',
+              },
+              user: {
+                id: 'user-id',
+                email: 'user@example.com',
+                username: 'user',
+                mustChangePassword: false,
+                roles: ['User'],
+                permissions: [],
+              },
+              requiresPasswordChange: false,
+              message: 'Login successful',
+            },
+          },
+        },
+        {
+          example: {
+            success: true,
+            message: 'Login successful',
+            data: {
+              success: false,
+              requiresPasswordChange: true,
+              passwordChangeToken: 'short-lived-token',
+              nextStep: {
+                action: 'SET_PASSWORD',
+                method: 'POST',
+                endpoint: '/auth/set-required-password',
+              },
+              message:
+                'Temporary password accepted. Set a new password, then log in again with the new password.',
+            },
+          },
+        },
+      ],
+    },
   })
   @ApiResponse({
     status: 401,
@@ -122,6 +173,49 @@ export class AuthController {
     const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     const userAgent = req.headers?.['user-agent'];
     return this.authService.login(dto, ipAddress, userAgent);
+  }
+
+  @Public()
+  @Post('set-required-password')
+  @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Password set successfully. Please login again.')
+  @ApiBody({ type: SetRequiredPasswordDto })
+  @ApiOperation({
+    summary:
+      'Set a new password after temporary-password login, then require normal login',
+    description:
+      'Consumes the short-lived passwordChangeToken returned by login when requiresPasswordChange is true. This endpoint sets the real password, clears mustChangePassword, revokes existing sessions/tokens, and does not issue auth tokens. The user must log in again with the new password.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Password set successfully. User must login again.',
+    schema: {
+      example: {
+        success: true,
+        message: 'Password set successfully. Please login again.',
+        data: {
+          success: true,
+          message:
+            'Password set successfully. Please log in again with your new password.',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Password confirmation mismatch or validation failed',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired password change token',
+  })
+  async setRequiredPassword(
+    @Body() dto: SetRequiredPasswordDto,
+    @Req() req: any,
+  ) {
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    const userAgent = req.headers?.['user-agent'];
+    return this.authService.setRequiredPassword(dto, ipAddress, userAgent);
   }
 
   @Public()

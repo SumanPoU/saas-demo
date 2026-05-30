@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -21,12 +22,15 @@ import { ResetPasswordVerifyDto } from './dto/reset-password-verify.dto';
 import { ResetPasswordCompleteDto } from './dto/reset-password-complete.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { SetRequiredPasswordDto } from './dto/set-required-password.dto';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -101,9 +105,8 @@ export class AuthService {
     // Send real email containing verification OTP code
     await this.mailService.sendRegistrationOtp(user.email, otp);
 
-    // Print verification code to console logs strictly for local developers
-    console.log(
-      `\n=========================================\n🌱 [REGISTRATION OTP] sent to ${user.email}: \n👉 CODE: ${otp}\n=========================================\n`,
+    this.logger.debug(
+      `Registration OTP generated and emailed for userId=${user.id}`,
     );
 
     return {
@@ -230,6 +233,7 @@ export class AuthService {
       data: {
         passwordHash,
         passwordChangedAt: new Date(),
+        mustChangePassword: false,
         isActive: true,
         emailVerified: true,
         roles: defaultRole
@@ -296,6 +300,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email, username, or password');
     }
 
+    if (user.mustChangePassword) {
+      return this.initiateRequiredPasswordChange(user, ipAddress, userAgent);
+    }
+
     // Update user last login timestamp
     await this.prisma.user.update({
       where: { id: user.id },
@@ -358,9 +366,8 @@ export class AuthService {
           verifyLink,
         );
 
-        // Print to console log for local development
-        console.log(
-          `\n=========================================\n📬 [NEW DEVICE VERIFICATION LINK]: \n👉 LINK: ${verifyLink}\n=========================================\n`,
+        this.logger.debug(
+          `New device verification link generated for userId=${user.id}`,
         );
 
         throw new HttpException(
@@ -380,6 +387,136 @@ export class AuthService {
 
     // 3. Normal Login Session Creation and Token Issuance
     return this.establishSessionAndIssueTokens(user, ipAddress, userAgent);
+  }
+
+  private async initiateRequiredPasswordChange(
+    user: any,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tenantId: 'default',
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: 'default',
+        actorId: user.id,
+        action: 'USER_REQUIRED_PASSWORD_CHANGE_INITIATED',
+        entityType: 'User',
+        entityId: user.id,
+        ipAddress,
+        userAgent,
+      },
+    });
+
+    return {
+      success: false,
+      requiresPasswordChange: true,
+      passwordChangeToken: rawToken,
+      nextStep: {
+        action: 'SET_PASSWORD',
+        method: 'POST',
+        endpoint: '/auth/set-required-password',
+      },
+      message:
+        'Temporary password accepted. Set a new password, then log in again with the new password.',
+    };
+  }
+
+  async setRequiredPassword(
+    dto: SetRequiredPasswordDto,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const tokenHash = this.hashToken(dto.passwordChangeToken);
+    const resetToken = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (
+      !resetToken ||
+      resetToken.isUsed ||
+      resetToken.expiresAt < new Date() ||
+      !resetToken.user.isActive ||
+      !resetToken.user.mustChangePassword
+    ) {
+      throw new UnauthorizedException(
+        'Invalid or expired password change token',
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: resetToken.userId },
+      data: {
+        passwordHash,
+        passwordChangedAt: new Date(),
+        mustChangePassword: false,
+      },
+    });
+
+    await this.prisma.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: {
+        isUsed: true,
+        usedAt: new Date(),
+      },
+    });
+
+    await this.prisma.userSession.updateMany({
+      where: { userId: resetToken.userId, isRevoked: false },
+      data: {
+        isRevoked: true,
+        revokedAt: new Date(),
+      },
+    });
+
+    await this.prisma.refreshToken.updateMany({
+      where: { userId: resetToken.userId, isRevoked: false },
+      data: {
+        isRevoked: true,
+        revokedAt: new Date(),
+      },
+    });
+
+    await this.mailService.sendPasswordResetSuccessNotification(
+      resetToken.user.email,
+      resetToken.user.firstName ?? undefined,
+    );
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: 'default',
+        actorId: resetToken.userId,
+        action: 'USER_REQUIRED_PASSWORD_CHANGE_COMPLETE',
+        entityType: 'User',
+        entityId: resetToken.userId,
+        ipAddress,
+        userAgent,
+      },
+    });
+
+    return {
+      success: true,
+      message:
+        'Password set successfully. Please log in again with your new password.',
+    };
   }
 
   /**
@@ -459,6 +596,10 @@ export class AuthService {
     return {
       tokens,
       user: authUser,
+      requiresPasswordChange: authUser.mustChangePassword,
+      message: authUser.mustChangePassword
+        ? 'Temporary password accepted. Please change your password before continuing.'
+        : 'Login successful',
     };
   }
 
@@ -603,6 +744,7 @@ export class AuthService {
     return {
       tokens,
       user: authUser,
+      requiresPasswordChange: authUser.mustChangePassword,
     };
   }
 
@@ -691,9 +833,8 @@ export class AuthService {
     // Send real email containing password recovery OTP code
     await this.mailService.sendPasswordResetOtp(user.email, otp);
 
-    // Log recovery code in server console strictly for developers
-    console.log(
-      `\n=========================================\n🔑 [PASSWORD RESET OTP] sent to ${user.email}: \n👉 CODE: ${otp}\n=========================================\n`,
+    this.logger.debug(
+      `Password reset OTP generated and emailed for userId=${user.id}`,
     );
 
     return {
@@ -806,7 +947,11 @@ export class AuthService {
     // Save new password in database
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash, passwordChangedAt: new Date() },
+      data: {
+        passwordHash,
+        passwordChangedAt: new Date(),
+        mustChangePassword: false,
+      },
     });
 
     // FORCE REVOCATION on all existing sessions (security best practice)
@@ -1260,6 +1405,7 @@ export class AuthService {
     return {
       tokens,
       user: authUser,
+      requiresPasswordChange: authUser.mustChangePassword,
     };
   }
 
@@ -1322,9 +1468,8 @@ export class AuthService {
     // Send real email containing verification OTP code
     await this.mailService.sendRegistrationOtp(user.email, otp);
 
-    // Print verification code to console logs strictly for local developers
-    console.log(
-      `\n=========================================\n🌱 [RESEND OTP] sent to ${user.email}: \n👉 CODE: ${otp}\n=========================================\n`,
+    this.logger.debug(
+      `Registration OTP regenerated and emailed for userId=${user.id}`,
     );
 
     return {
@@ -1379,7 +1524,11 @@ export class AuthService {
     // Save new password in database
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash, passwordChangedAt: new Date() },
+      data: {
+        passwordHash,
+        passwordChangedAt: new Date(),
+        mustChangePassword: false,
+      },
     });
 
     // Revoke all other active sessions EXCEPT the current one (excellent security hygiene)
@@ -1486,6 +1635,7 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       isActive: user.isActive,
       isSuperAdmin: user.isSuperAdmin,
+      mustChangePassword: user.mustChangePassword,
       roles: user.roles.map((role) => role.name),
       // permissions: Array.from(permissionsById.values()),
       permissions: Array.from(permissionsById.values()).map((p) => p.name),

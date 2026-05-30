@@ -11,6 +11,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppLoggerModule } from './logger/logger.module';
 import configuration from './config/configuration';
+import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { MfaModule } from './mfa/mfa.module';
@@ -20,6 +21,8 @@ import { AuthGuard } from './auth/guards/auth.guard';
 import { AuthMiddleware } from './auth/middlewares/auth.middleware';
 import { MailModule } from './mail/mail.module';
 import { CommonModule } from './common/common.module';
+import { UsersModule } from './users/users.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -27,6 +30,7 @@ import { CommonModule } from './common/common.module';
       load: [configuration],
       envFilePath: ['.env', '.env.development.local'],
       isGlobal: true,
+      validate: validateEnv,
     }),
     AppLoggerModule,
     TerminusModule,
@@ -35,6 +39,8 @@ import { CommonModule } from './common/common.module';
     MfaModule,
     RolesModule,
     PermissionsModule,
+    UsersModule,
+    AuditModule,
     MailModule,
     CommonModule,
     ThrottlerModule.forRootAsync({

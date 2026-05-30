@@ -23,6 +23,18 @@ export class PermissionsService {
     private readonly pagination: PaginationService,
   ) {}
 
+  private withRolesFromRolePermissions<T extends { rolePermissions?: any[] }>(
+    permission: T,
+  ) {
+    return {
+      ...permission,
+      roles:
+        permission.rolePermissions
+          ?.map((rolePermission) => rolePermission.role)
+          .filter(Boolean) ?? [],
+    };
+  }
+
   /**
    * Create Permission
    * Validates name uniqueness and persists a new permission, optionally
@@ -37,7 +49,7 @@ export class PermissionsService {
       throw new BadRequestException(`Permission "${dto.name}" already exists`);
     }
 
-    return this.prisma.permission.create({
+    const permission = await this.prisma.permission.create({
       data: {
         name: dto.name,
         description: dto.description,
@@ -45,10 +57,14 @@ export class PermissionsService {
       },
       include: {
         groups: true,
-        roles: true,
+        rolePermissions: {
+          include: { role: true },
+        },
         createdUser: { select: { id: true, username: true } },
       },
     });
+
+    return this.withRolesFromRolePermissions(permission);
   }
 
   /**
@@ -67,15 +83,28 @@ export class PermissionsService {
       };
     }
 
-    return this.pagination.paginate(this.prisma.permission, query, {
-      where,
-      include: {
-        groups: true,
-        roles: true,
-        createdUser: { select: { id: true, username: true } },
+    const result = await this.pagination.paginate<any>(
+      this.prisma.permission,
+      query,
+      {
+        where,
+        include: {
+          groups: true,
+          rolePermissions: {
+            include: { role: true },
+          },
+          createdUser: { select: { id: true, username: true } },
+        },
+        orderBy: { name: 'asc' },
       },
-      orderBy: { name: 'asc' },
-    });
+    );
+
+    return {
+      ...result,
+      data: result.data.map((permission) =>
+        this.withRolesFromRolePermissions(permission),
+      ),
+    };
   }
 
   /**
@@ -88,7 +117,9 @@ export class PermissionsService {
       where: { id },
       include: {
         groups: true,
-        roles: true,
+        rolePermissions: {
+          include: { role: true },
+        },
         createdUser: { select: { id: true, username: true } },
       },
     });
@@ -97,7 +128,7 @@ export class PermissionsService {
       throw new NotFoundException(`Permission with ID "${id}" not found`);
     }
 
-    return permission;
+    return this.withRolesFromRolePermissions(permission);
   }
 
   /**
@@ -120,7 +151,7 @@ export class PermissionsService {
       }
     }
 
-    return this.prisma.permission.update({
+    const permission = await this.prisma.permission.update({
       where: { id },
       data: {
         name: dto.name,
@@ -128,9 +159,13 @@ export class PermissionsService {
       },
       include: {
         groups: true,
-        roles: true,
+        rolePermissions: {
+          include: { role: true },
+        },
       },
     });
+
+    return this.withRolesFromRolePermissions(permission);
   }
 
   /**

@@ -20,6 +20,7 @@ export class MailService {
       );
       this.transporter = {
         sendMail: async (options: any) => {
+          options.text = '[redacted]';
           this.logger.log(
             `\n=========================================\n📬 [MOCK MAIL SENT]\nTo: ${options.to}\nSubject: ${options.subject}\nText: ${options.text}\n=========================================\n`,
           );
@@ -182,6 +183,30 @@ export class MailService {
         <p style="font-size: 12px; color: #94a3b8; text-align: center;">&copy; ${new Date().getFullYear()} SaaS Demo. All rights reserved.</p>
       </div>
     `;
+    await this.sendEmail(to, subject, text, html);
+  }
+
+  async sendTemporaryPassword(
+    to: string,
+    temporaryPassword: string,
+    name?: string,
+  ) {
+    const subject = 'Your Temporary Account Password';
+    const userName = name || 'User';
+    const text = `Hello ${userName}, an administrator created or reset your account password. Your temporary password is: ${temporaryPassword}. You must change it after login.`;
+    const html = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #eef2f6; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #4f46e5; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Temporary Password</h2>
+        <p>Hello ${userName},</p>
+        <p>An administrator created or reset your account password. Use the temporary password below to sign in:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <span style="font-size: 22px; font-weight: bold; letter-spacing: 2px; color: #1e1b4b; background-color: #f8fafc; padding: 14px 24px; border-radius: 8px; border: 1px dashed #818cf8; display: inline-block;">${temporaryPassword}</span>
+        </div>
+        <p style="color: #ef4444; font-weight: bold;">You must change this temporary password after login.</p>
+        <p style="color: #64748b; font-size: 14px;">If you did not expect this email, contact support immediately.</p>
+      </div>
+    `;
+
     await this.sendEmail(to, subject, text, html);
   }
 }

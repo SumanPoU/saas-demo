@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
   Inject,
   forwardRef,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -18,6 +19,7 @@ import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class MfaService {
+  private readonly logger = new Logger(MfaService.name);
   private readonly usedTotpCodes = new Map<string, number>();
 
   constructor(
@@ -563,9 +565,8 @@ export class MfaService {
 
     await this.mailService.sendEmail(user.email, subject, text, html);
 
-    // Log to console for dev purposes
-    console.log(
-      `\n=========================================\n📬 [MFA RECOVERY LINK]: \n👉 LINK: ${recoveryLink}\n=========================================\n`,
+    this.logger.debug(
+      `MFA recovery link generated and emailed for userId=${user.id}`,
     );
 
     return {

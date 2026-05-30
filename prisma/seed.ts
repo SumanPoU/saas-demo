@@ -8,6 +8,14 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Starting database seeding...');
+  const adminPassword = process.env.SEED_SUPERADMIN_PASSWORD;
+  const userPassword = process.env.SEED_USER_PASSWORD;
+
+  if (!adminPassword || !userPassword) {
+    throw new Error(
+      'Missing SEED_SUPERADMIN_PASSWORD or SEED_USER_PASSWORD. Refusing to seed hardcoded credentials.',
+    );
+  }
 
   // 1. Create or Update Roles
   console.log('🔑 Seeding roles...');
@@ -16,7 +24,8 @@ async function main() {
     update: {},
     create: {
       name: 'SuperAdmin',
-      description: 'Super Administrator with full system access and permissions.',
+      description:
+        'Super Administrator with full system access and permissions.',
       isDefault: false,
     },
   });
@@ -26,7 +35,8 @@ async function main() {
     update: {},
     create: {
       name: 'Admin',
-      description: 'Administrator with access to manage users and view audit trails.',
+      description:
+        'Administrator with access to manage users and view audit trails.',
       isDefault: false,
     },
   });
@@ -41,49 +51,92 @@ async function main() {
     },
   });
 
-  console.log(`Roles created/verified: SuperAdmin (${superAdminRole.id}), Admin (${adminRole.id}), User (${userRole.id})`);
+  console.log('Roles created/verified.');
 
   // 2. Create or Update Permission Groups and Permissions
   console.log('📦 Seeding permission groups and permissions...');
-  
+
   const permGroups = [
     {
       name: 'User Management',
-      description: 'Permissions related to user accounts, profiles, and registration.',
+      description:
+        'Permissions related to user accounts, profiles, and registration.',
       permissions: [
-        { name: 'users:create', description: 'Allows creating new user accounts' },
-        { name: 'users:read', description: 'Allows viewing user lists and profile details' },
-        { name: 'users:update', description: 'Allows modifying user accounts and profile details' },
-        { name: 'users:delete', description: 'Allows disabling or deleting user accounts' },
+        {
+          name: 'users:create',
+          description: 'Allows creating new user accounts',
+        },
+        {
+          name: 'users:read',
+          description: 'Allows viewing user lists and profile details',
+        },
+        {
+          name: 'users:update',
+          description: 'Allows modifying user accounts and profile details',
+        },
+        {
+          name: 'users:delete',
+          description: 'Allows disabling or deleting user accounts',
+        },
       ],
     },
     {
       name: 'Access Control',
-      description: 'Permissions related to role management and security permissions.',
+      description:
+        'Permissions related to role management and security permissions.',
       permissions: [
         { name: 'roles:create', description: 'Allows creating roles' },
-        { name: 'roles:read', description: 'Allows viewing roles and role assignments' },
-        { name: 'roles:update', description: 'Allows modifying roles and role permission assignments' },
+        {
+          name: 'roles:read',
+          description: 'Allows viewing roles and role assignments',
+        },
+        {
+          name: 'roles:update',
+          description: 'Allows modifying roles and role permission assignments',
+        },
         { name: 'roles:delete', description: 'Allows deleting roles' },
-        { name: 'permissions:read', description: 'Allows viewing available system permissions' },
-        { name: 'permissions:create', description: 'Allows creating permissions and permission groups' },
-        { name: 'permissions:update', description: 'Allows modifying permissions and permission groups' },
-        { name: 'permissions:delete', description: 'Allows deleting permissions and permission groups' },
-        { name: 'roles:assign', description: 'Allows assigning roles to users' },
+        {
+          name: 'permissions:read',
+          description: 'Allows viewing available system permissions',
+        },
+        {
+          name: 'permissions:create',
+          description: 'Allows creating permissions and permission groups',
+        },
+        {
+          name: 'permissions:update',
+          description: 'Allows modifying permissions and permission groups',
+        },
+        {
+          name: 'permissions:delete',
+          description: 'Allows deleting permissions and permission groups',
+        },
+        {
+          name: 'roles:assign',
+          description: 'Allows assigning roles to users',
+        },
       ],
     },
     {
       name: 'Audit Trail',
-      description: 'Permissions related to viewing audit trails and activity logs.',
+      description:
+        'Permissions related to viewing audit trails and activity logs.',
       permissions: [
-        { name: 'audit:read', description: 'Allows viewing system-wide activity and audit logs' },
+        {
+          name: 'audit:read',
+          description: 'Allows viewing system-wide activity and audit logs',
+        },
       ],
     },
     {
       name: 'System Settings',
-      description: 'Permissions related to global configurations and system state.',
+      description:
+        'Permissions related to global configurations and system state.',
       permissions: [
-        { name: 'settings:manage', description: 'Allows modifying global system configurations' },
+        {
+          name: 'settings:manage',
+          description: 'Allows modifying global system configurations',
+        },
       ],
     },
   ];
@@ -116,7 +169,9 @@ async function main() {
     }
   }
 
-  console.log(`Successfully seeded ${permGroups.length} permission groups and ${allPermissions.length} permissions.`);
+  console.log(
+    `Successfully seeded ${permGroups.length} permission groups and ${allPermissions.length} permissions.`,
+  );
 
   // 3. Assign Permissions to Roles (RolePermission Join Table)
   console.log('🔗 Mapping permissions to roles...');
@@ -154,7 +209,7 @@ async function main() {
       'permissions:update',
       'permissions:delete',
       'audit:read',
-    ].includes(p.name)
+    ].includes(p.name),
   );
 
   for (const perm of adminPermissions) {
@@ -179,9 +234,9 @@ async function main() {
   console.log('👤 Creating default SuperAdmin user...');
   const adminEmail = 'admin@demo.com';
   const saltRounds = 10;
-  const passwordHash = await bcrypt.hash('SuperAdminPassword123!', saltRounds);
+  const passwordHash = await bcrypt.hash(adminPassword, saltRounds);
 
-  const superAdminUser = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: adminEmail },
     update: {
       passwordHash,
@@ -203,14 +258,14 @@ async function main() {
     },
   });
 
-  console.log(`Default SuperAdmin user verified/created: ${superAdminUser.email}`);
+  console.log('Default SuperAdmin user verified/created.');
 
   // 5. Create Default regular user for development/testing
   console.log('👤 Creating default test user...');
   const userEmail = 'user@demo.com';
-  const userPasswordHash = await bcrypt.hash('UserPassword123!', saltRounds);
+  const userPasswordHash = await bcrypt.hash(userPassword, saltRounds);
 
-  const regularUser = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: userEmail },
     update: {
       passwordHash: userPasswordHash,
@@ -231,7 +286,7 @@ async function main() {
     },
   });
 
-  console.log(`Default regular user verified/created: ${regularUser.email}`);
+  console.log('Default regular user verified/created.');
 
   // 6. Create Global Configurations
   console.log('⚙️ Seeding global configurations...');

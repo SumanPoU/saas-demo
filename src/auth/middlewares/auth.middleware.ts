@@ -91,6 +91,7 @@ export class AuthMiddleware implements NestMiddleware {
         username: user.username,
         email: user.email,
         isSuperAdmin: user.isSuperAdmin,
+        mustChangePassword: user.mustChangePassword,
         roles,
         permissions,
         sessionId: session.id,
