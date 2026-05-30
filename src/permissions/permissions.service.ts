@@ -4,7 +4,11 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaginationService, PaginationQueryDto, PaginatedResult } from '../common/pagination';
+import {
+  PaginationService,
+  PaginationQueryDto,
+  PaginatedResult,
+} from '../common/pagination';
 import {
   CreatePermissionDto,
   UpdatePermissionDto,
@@ -63,19 +67,15 @@ export class PermissionsService {
       };
     }
 
-    return this.pagination.paginate(
-      this.prisma.permission,
-      query,
-      {
-        where,
-        include: {
-          groups: true,
-          roles: true,
-          createdUser: { select: { id: true, username: true } },
-        },
-        orderBy: { name: 'asc' },
-      }
-    );
+    return this.pagination.paginate(this.prisma.permission, query, {
+      where,
+      include: {
+        groups: true,
+        roles: true,
+        createdUser: { select: { id: true, username: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
   }
 
   /**

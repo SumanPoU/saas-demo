@@ -5,12 +5,20 @@ import {
 } from '@nestjs/platform-fastify';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
-import { VersioningType, ValidationPipe, BadRequestException } from '@nestjs/common';
+import {
+  VersioningType,
+  ValidationPipe,
+  BadRequestException,
+} from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from '@fastify/helmet';
 import compression from '@fastify/compress';
 import { AppModule } from './app.module';
-import { ResponseInterceptor, GlobalExceptionFilter, formatValidationErrors } from './common/response';
+import {
+  ResponseInterceptor,
+  GlobalExceptionFilter,
+  formatValidationErrors,
+} from './common/response';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -58,10 +66,11 @@ async function bootstrap() {
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
-      exceptionFactory: (errors) => new BadRequestException({
-        message: 'Validation Failed',
-        errors: formatValidationErrors(errors),
-      }),
+      exceptionFactory: (errors) =>
+        new BadRequestException({
+          message: 'Validation Failed',
+          errors: formatValidationErrors(errors),
+        }),
     }),
   );
 

@@ -1,12 +1,16 @@
 import { ValidationError } from '@nestjs/common';
 import { ValidationErrorItem } from '../interfaces/response.interface';
 
-export function formatValidationErrors(errors: ValidationError[]): ValidationErrorItem[] {
+export function formatValidationErrors(
+  errors: ValidationError[],
+): ValidationErrorItem[] {
   const formattedErrors: ValidationErrorItem[] = [];
 
   const extractErrors = (errs: ValidationError[], parentProperty?: string) => {
     errs.forEach((err) => {
-      const propertyPath = parentProperty ? `${parentProperty}.${err.property}` : err.property;
+      const propertyPath = parentProperty
+        ? `${parentProperty}.${err.property}`
+        : err.property;
 
       if (err.constraints) {
         Object.values(err.constraints).forEach((message) => {

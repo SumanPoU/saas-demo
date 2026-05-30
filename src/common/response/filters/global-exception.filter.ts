@@ -8,7 +8,10 @@ import {
 } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { Prisma } from '@prisma/client';
-import { ApiErrorResponse, ValidationErrorItem } from '../interfaces/response.interface';
+import {
+  ApiErrorResponse,
+  ValidationErrorItem,
+} from '../interfaces/response.interface';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -29,9 +32,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       const exceptionResponse = exception.getResponse();
 
       if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-        error = (exceptionResponse as any).error || HttpStatus[status] || 'Error';
+        error =
+          (exceptionResponse as any).error || HttpStatus[status] || 'Error';
         // Handle validation errors specifically formatted by our custom ValidationPipe
-        if ('errors' in exceptionResponse && Array.isArray((exceptionResponse as any).errors)) {
+        if (
+          'errors' in exceptionResponse &&
+          Array.isArray((exceptionResponse as any).errors)
+        ) {
           message = (exceptionResponse as any).message || 'Validation Failed';
           errors = (exceptionResponse as any).errors;
         } else {
@@ -48,7 +55,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           status = HttpStatus.CONFLICT;
           error = 'Conflict';
           message = 'Unique constraint failed';
-          errors = [{ field: exception.meta?.target as string, message: 'Value already exists' }];
+          errors = [
+            {
+              field: exception.meta?.target as string,
+              message: 'Value already exists',
+            },
+          ];
           break;
         case 'P2025':
           status = HttpStatus.NOT_FOUND;
@@ -59,14 +71,20 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           status = HttpStatus.BAD_REQUEST;
           error = 'Bad Request';
           message = 'Database operation failed';
-          this.logger.error(`Prisma Error: ${exception.message}`, exception.stack);
+          this.logger.error(
+            `Prisma Error: ${exception.message}`,
+            exception.stack,
+          );
           break;
       }
     } else if (exception instanceof Prisma.PrismaClientValidationError) {
       status = HttpStatus.BAD_REQUEST;
       error = 'Bad Request';
       message = 'Database validation error';
-      this.logger.error(`Prisma Validation Error: ${exception.message}`, exception.stack);
+      this.logger.error(
+        `Prisma Validation Error: ${exception.message}`,
+        exception.stack,
+      );
     } else {
       // Unhandled Exceptions
       error = 'Internal Server Error';

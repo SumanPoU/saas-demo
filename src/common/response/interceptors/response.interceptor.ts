@@ -8,19 +8,30 @@ import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { ApiResponse, ApiPaginatedResponse } from '../interfaces/response.interface';
+import {
+  ApiResponse,
+  ApiPaginatedResponse,
+} from '../interfaces/response.interface';
 
 @Injectable()
-export class ResponseInterceptor<T> implements NestInterceptor<T, ApiResponse<T> | ApiPaginatedResponse<T>> {
+export class ResponseInterceptor<T> implements NestInterceptor<
+  T,
+  ApiResponse<T> | ApiPaginatedResponse<T>
+> {
   constructor(private reflector: Reflector) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<ApiResponse<T> | ApiPaginatedResponse<T>> {
+  intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Observable<ApiResponse<T> | ApiPaginatedResponse<T>> {
     const ctx = context.switchToHttp();
     const response = ctx.getResponse<FastifyReply>();
     const request = ctx.getRequest<FastifyRequest>();
 
     // Support for changing response message via a custom decorator could be added here
-    const message = this.reflector.get<string>('response_message', context.getHandler()) || 'Operation successful';
+    const message =
+      this.reflector.get<string>('response_message', context.getHandler()) ||
+      'Operation successful';
 
     return next.handle().pipe(
       map((data) => {
@@ -30,7 +41,12 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, ApiResponse<T>
         }
 
         // Check if the data is already a paginated result from PaginationService
-        if (data && typeof data === 'object' && 'data' in data && 'meta' in data) {
+        if (
+          data &&
+          typeof data === 'object' &&
+          'data' in data &&
+          'meta' in data
+        ) {
           return {
             success: true,
             statusCode: response.statusCode,

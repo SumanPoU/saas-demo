@@ -66,7 +66,10 @@ export class PermissionsController {
   @ApiOperation({
     summary: 'Retrieve all permissions with their groups and roles (Paginated)',
   })
-  @ApiResponse({ status: 200, description: 'Paginated list of permissions returned' })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated list of permissions returned',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAllPermissions(@Query() query: PaginationQueryDto) {
     return this.permissionsService.getAllPermissions(query);
