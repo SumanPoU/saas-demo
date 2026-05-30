@@ -49,7 +49,9 @@ export class UsersService {
   }
 
   private deriveUsername(email: string, username?: string) {
-    return (username ?? email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]/g, '');
+    return (username ?? email.split('@')[0])
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
   }
 
   async createUser(dto: CreateUserDto, actorId: string) {
