@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "4b6a8277-2eef-4171-aa3a-592f4c3b53c1",
     "name": "SaaS Enterprise Auth, MFA Roles and Permissions API",
-    "description": "Comprehensive Postman collection for testing the NestJS enterprise authentication system, including authentication and registration, MFA, roles, permissions, and permission groups.",
+    "description": "Comprehensive Postman collection for testing the NestJS enterprise authentication system, including authentication and registration, MFA, roles, permissions, permission groups, users, and database-backed runtime settings.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -1900,6 +1900,107 @@
               ]
             },
             "description": "Retrieves audit logs with actor details."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Global Config",
+      "item": [
+        {
+          "name": "List Global Configs",
+          "id": "d8d83f82-bb95-4e51-9ed8-67384a688b30",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/global-config",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "global-config"]
+            },
+            "description": "Admin-only endpoint. Lists global_config records. Optional query: category=system, security, auth, or mail."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Global Config",
+          "id": "2a3d3f63-9cc7-4e6d-95c1-c9c360f761a7",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"app\",\n  \"category\": \"system\",\n  \"value\": {\n    \"name\": \"SaaS Enterprise Demo\",\n    \"frontendUrl\": \"http://localhost:3000\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/global-config",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "global-config"]
+            },
+            "description": "Admin-only endpoint. Creates a global_config record by key."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Config By Key",
+          "id": "92d7ac4c-66ce-45af-94c3-6f095d1146df",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/global-config/app",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "global-config", "app"]
+            },
+            "description": "Admin-only endpoint. Retrieves one global_config record by key. Runtime keys include bcrypt, throttle, jwt, app, and mail."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Config By Key",
+          "id": "34543e12-f2db-4f43-81f8-f7f54219cbef",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"system\",\n  \"value\": {\n    \"name\": \"SaaS Enterprise Demo\",\n    \"frontendUrl\": \"http://localhost:3000\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/global-config/app",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "global-config", "app"]
+            },
+            "description": "Admin-only endpoint. Updates a global_config record by key. For example, PATCH /v1/global-config/app updates app.name and app.frontendUrl."
           },
           "response": []
         }

@@ -56,7 +56,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<
             timestamp: new Date().toISOString(),
             path: request.url,
             method: request.method,
-          } as ApiPaginatedResponse<T>;
+          };
         }
 
         // Handle standard response
@@ -68,7 +68,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<
           timestamp: new Date().toISOString(),
           path: request.url,
           method: request.method,
-        } as ApiResponse<T>;
+        };
       }),
     );
   }

@@ -1,5 +1,5 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { TerminusModule } from '@nestjs/terminus';
 import {
   ThrottlerModule,
@@ -23,6 +23,9 @@ import { MailModule } from './mail/mail.module';
 import { CommonModule } from './common/common.module';
 import { UsersModule } from './users/users.module';
 import { AuditModule } from './audit/audit.module';
+import { RuntimeConfigModule } from './config/runtime-config.module';
+import { RuntimeConfigService } from './config/runtime-config.service';
+import { GlobalConfigModule } from './global-config/global-config.module';
 
 @Module({
   imports: [
@@ -32,6 +35,7 @@ import { AuditModule } from './audit/audit.module';
       isGlobal: true,
       validate: validateEnv,
     }),
+    RuntimeConfigModule,
     AppLoggerModule,
     TerminusModule,
     PrismaModule,
@@ -41,21 +45,24 @@ import { AuditModule } from './audit/audit.module';
     PermissionsModule,
     UsersModule,
     AuditModule,
+    GlobalConfigModule,
     MailModule,
     CommonModule,
     ThrottlerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService): ThrottlerModuleOptions => ({
+      inject: [RuntimeConfigService],
+      useFactory: (
+        runtimeConfig: RuntimeConfigService,
+      ): ThrottlerModuleOptions => ({
         throttlers: [
           {
             name: 'short',
-            ttl: config.get<number>('throttle.short.ttl') ?? 1000,
-            limit: config.get<number>('throttle.short.limit') ?? 10,
+            ttl: () => runtimeConfig.getNumber('THROTTLE_SHORT_TTL'),
+            limit: () => runtimeConfig.getNumber('THROTTLE_SHORT_LIMIT'),
           },
           {
             name: 'long',
-            ttl: config.get<number>('throttle.long.ttl') ?? 60000,
-            limit: config.get<number>('throttle.long.limit') ?? 100,
+            ttl: () => runtimeConfig.getNumber('THROTTLE_LONG_TTL'),
+            limit: () => runtimeConfig.getNumber('THROTTLE_LONG_LIMIT'),
           },
         ],
       }),

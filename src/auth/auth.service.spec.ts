@@ -13,6 +13,7 @@ describe('AuthService', () => {
   let jwtService: any;
   let configService: any;
   let mailService: any;
+  let runtimeConfig: any;
 
   const activeTempUser = {
     id: 'user-1',
@@ -117,8 +118,26 @@ describe('AuthService', () => {
       sendPasswordResetOtp: jest.fn(),
       sendPasswordResetSuccessNotification: jest.fn(),
     };
+    runtimeConfig = {
+      getBcryptSaltRounds: jest.fn().mockResolvedValue(10),
+      getString: jest.fn((key: string) => {
+        const values: Record<string, string> = {
+          FRONTEND_URL: 'http://localhost:3000',
+          JWT_EXPIRES_IN: '15m',
+          JWT_REFRESH_EXPIRES_IN: '7d',
+          MFA_PENDING_TOKEN_EXPIRY: '5m',
+        };
+        return Promise.resolve(values[key]);
+      }),
+    };
 
-    service = new AuthService(prisma, jwtService, configService, mailService);
+    service = new AuthService(
+      prisma,
+      jwtService,
+      configService,
+      mailService,
+      runtimeConfig,
+    );
   });
 
   it('returns a password-change next step instead of tokens for temporary-password login', async () => {

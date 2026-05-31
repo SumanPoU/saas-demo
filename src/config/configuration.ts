@@ -18,17 +18,12 @@ export default () => ({
 
   jwt: {
     secret: process.env.JWT_SECRET,
-    expiresIn: process.env.JWT_EXPIRES_IN ?? '15m',
     refreshSecret: process.env.JWT_REFRESH_SECRET,
-    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
   },
 
   mail: {
-    host: process.env.MAIL_HOST ?? 'localhost',
-    port: parseInt(process.env.MAIL_PORT ?? '2525', 10),
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
-    from: process.env.MAIL_FROM ?? '"SaaS Demo" <noreply@demo.com>',
   },
 
   oauth: {
@@ -44,21 +39,7 @@ export default () => ({
     },
   },
 
-  throttle: {
-    short: {
-      ttl: parseInt(process.env.THROTTLE_SHORT_TTL ?? '1000', 10),
-      limit: parseInt(process.env.THROTTLE_SHORT_LIMIT ?? '10', 10),
-    },
-    long: {
-      ttl: parseInt(process.env.THROTTLE_LONG_TTL ?? '60000', 10),
-      limit: parseInt(process.env.THROTTLE_LONG_LIMIT ?? '100', 10),
-    },
-  },
-
   mfa: {
     encryptionKey: process.env.MFA_ENCRYPTION_KEY,
-    pendingTokenExpiry: process.env.MFA_PENDING_TOKEN_EXPIRY ?? '5m',
   },
-  appName: process.env.APP_NAME ?? 'SaaS_Enterprise_Demo',
-  frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
 });

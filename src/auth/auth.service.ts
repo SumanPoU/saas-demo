@@ -24,6 +24,7 @@ import { ResendOtpDto } from './dto/resend-otp.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { SetRequiredPasswordDto } from './dto/set-required-password.dto';
 import { MailService } from '../mail/mail.service';
+import { RuntimeConfigService } from '../config/runtime-config.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
@@ -36,6 +37,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
+    private readonly runtimeConfig: RuntimeConfigService,
   ) {}
 
   /**
@@ -219,7 +221,7 @@ export class AuthService {
       );
     }
 
-    const saltRounds = 10;
+    const saltRounds = await this.runtimeConfig.getBcryptSaltRounds();
     const passwordHash = await bcrypt.hash(dto.password, saltRounds);
 
     // Retrieve default system role
@@ -356,9 +358,7 @@ export class AuthService {
           },
         });
 
-        const frontendUrl =
-          this.configService.get<string>('frontendUrl') ??
-          'http://localhost:3000';
+        const frontendUrl = await this.runtimeConfig.getString('FRONTEND_URL');
         const verifyLink = `${frontendUrl}/auth/verify-device?token=${rawToken}`;
 
         await this.mailService.sendDeviceVerificationLink(
@@ -383,7 +383,7 @@ export class AuthService {
 
     // 2. Multi-Factor Authentication Check
     const mfaResult = await this.checkMfaRequired(user);
-    if (mfaResult) return mfaResult as any;
+    if (mfaResult) return mfaResult;
 
     // 3. Normal Login Session Creation and Token Issuance
     return this.establishSessionAndIssueTokens(user, ipAddress, userAgent);
@@ -460,7 +460,8 @@ export class AuthService {
       );
     }
 
-    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    const saltRounds = await this.runtimeConfig.getBcryptSaltRounds();
+    const passwordHash = await bcrypt.hash(dto.newPassword, saltRounds);
 
     await this.prisma.user.update({
       where: { id: resetToken.userId },
@@ -558,8 +559,9 @@ export class AuthService {
     // Hash the refresh token and save to DB
     const refreshTokenHash = this.hashToken(tokens.refreshToken);
     const refreshExpiresAt = new Date();
-    const refreshTTL =
-      this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d';
+    const refreshTTL = await this.runtimeConfig.getString(
+      'JWT_REFRESH_EXPIRES_IN',
+    );
     const refreshDays = this.parseDurationToDays(refreshTTL);
     refreshExpiresAt.setDate(refreshExpiresAt.getDate() + refreshDays);
 
@@ -722,8 +724,9 @@ export class AuthService {
 
     const newHash = this.hashToken(tokens.refreshToken);
     const refreshExpiresAt = new Date();
-    const refreshTTL =
-      this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d';
+    const refreshTTL = await this.runtimeConfig.getString(
+      'JWT_REFRESH_EXPIRES_IN',
+    );
     const refreshDays = this.parseDurationToDays(refreshTTL);
     refreshExpiresAt.setDate(refreshExpiresAt.getDate() + refreshDays);
 
@@ -941,7 +944,7 @@ export class AuthService {
       throw new UnauthorizedException('Password reset code has expired');
     }
 
-    const saltRounds = 10;
+    const saltRounds = await this.runtimeConfig.getBcryptSaltRounds();
     const passwordHash = await bcrypt.hash(dto.password, saltRounds);
 
     // Save new password in database
@@ -1249,7 +1252,7 @@ export class AuthService {
     const emailLower = email.toLowerCase();
 
     // 1. Check if we already have a linked OAuthAccount for this provider & ID
-    let oauthAccount = await this.prisma.oAuthAccount.findUnique({
+    const oauthAccount = await this.prisma.oAuthAccount.findUnique({
       where: {
         provider_providerId: {
           provider,
@@ -1340,7 +1343,7 @@ export class AuthService {
     }
 
     const mfaResult = await this.checkMfaRequired(user);
-    if (mfaResult) return mfaResult as any;
+    if (mfaResult) return mfaResult;
 
     // 4. Log the user in, establishing a UserSession
     const sessionTimeoutDays = 90;
@@ -1371,8 +1374,9 @@ export class AuthService {
 
     const refreshTokenHash = this.hashToken(tokens.refreshToken);
     const refreshExpiresAt = new Date();
-    const refreshTTL =
-      this.configService.get<string>('jwt.refreshExpiresIn') ?? '7d';
+    const refreshTTL = await this.runtimeConfig.getString(
+      'JWT_REFRESH_EXPIRES_IN',
+    );
     const refreshDays = this.parseDurationToDays(refreshTTL);
     refreshExpiresAt.setDate(refreshExpiresAt.getDate() + refreshDays);
 
@@ -1518,7 +1522,7 @@ export class AuthService {
       }
     }
 
-    const saltRounds = 10;
+    const saltRounds = await this.runtimeConfig.getBcryptSaltRounds();
     const passwordHash = await bcrypt.hash(dto.newPassword, saltRounds);
 
     // Save new password in database
@@ -1647,8 +1651,9 @@ export class AuthService {
       where: { userId: user.id },
     });
     if (!mfaConfig || !mfaConfig.isEnabled) return null;
-    const mfaExpiry =
-      this.configService.get<string>('mfa.pendingTokenExpiry') ?? '5m';
+    const mfaExpiry = await this.runtimeConfig.getString(
+      'MFA_PENDING_TOKEN_EXPIRY',
+    );
     const mfaPendingToken = await this.jwtService.signAsync(
       { sub: user.id, type: 'mfa_pending' },
       {
@@ -1681,19 +1686,22 @@ export class AuthService {
     sessionId: string,
   ) {
     const payload = { sub: userId, email, username, sessionId };
+    const accessTokenExpiry =
+      await this.runtimeConfig.getString('JWT_EXPIRES_IN');
+    const refreshTokenExpiry = await this.runtimeConfig.getString(
+      'JWT_REFRESH_EXPIRES_IN',
+    );
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>('jwt.secret'),
-        expiresIn: (this.configService.get<string>('jwt.expiresIn') ??
-          '15m') as any,
+        expiresIn: accessTokenExpiry as any,
       }),
       this.jwtService.signAsync(
         { sub: userId, sessionId },
         {
           secret: this.configService.get<string>('jwt.refreshSecret'),
-          expiresIn: (this.configService.get<string>('jwt.refreshExpiresIn') ??
-            '7d') as any,
+          expiresIn: refreshTokenExpiry as any,
         },
       ),
     ]);

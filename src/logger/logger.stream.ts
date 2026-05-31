@@ -18,6 +18,6 @@ export function buildFileStream() {
       initialRotation: true,
       compress: 'gzip',
       maxFiles: 30,
-    } as Options,
+    },
   );
 }

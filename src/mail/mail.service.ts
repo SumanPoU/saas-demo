@@ -1,15 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { RuntimeConfigService } from '../config/runtime-config.service';
 
 @Injectable()
 export class MailService {
-  private transporter: nodemailer.Transporter;
   private readonly logger = new Logger(MailService.name);
 
-  constructor(private readonly config: ConfigService) {
-    const host = this.config.get<string>('mail.host');
-    const port = this.config.get<number>('mail.port');
+  constructor(
+    private readonly config: ConfigService,
+    private readonly runtimeConfig: RuntimeConfigService,
+  ) {}
+
+  private cachedTransporter: nodemailer.Transporter | null = null;
+  private lastMailConfigHash = '';
+
+  private async createTransporter(): Promise<nodemailer.Transporter> {
+    const host = await this.runtimeConfig.getString('MAIL_HOST');
+    const port = await this.runtimeConfig.getNumber('MAIL_PORT');
     const user = this.config.get<string>('mail.user');
     const pass = this.config.get<string>('mail.pass');
 
@@ -18,7 +26,7 @@ export class MailService {
       this.logger.warn(
         'SMTP credentials not configured. Using console logger fallback for outgoing mail.',
       );
-      this.transporter = {
+      return {
         sendMail: async (options: any) => {
           options.text = '[redacted]';
           this.logger.log(
@@ -27,8 +35,11 @@ export class MailService {
           return { messageId: 'mock-id' };
         },
       } as any;
-    } else {
-      this.transporter = nodemailer.createTransport({
+    }
+
+    const configHash = `${host}:${port}`;
+    if (!this.cachedTransporter || this.lastMailConfigHash !== configHash) {
+      this.cachedTransporter = nodemailer.createTransport({
         host,
         port,
         secure: port === 465, // true for 465, false for standard ports (e.g. 587/2525)
@@ -37,17 +48,20 @@ export class MailService {
           pass,
         },
       });
+      this.lastMailConfigHash = configHash;
     }
+
+    return this.cachedTransporter;
   }
 
   /**
    * Send a general text and HTML mail.
    */
   async sendEmail(to: string, subject: string, text: string, html: string) {
-    const from =
-      this.config.get<string>('mail.from') ?? '"SaaS Demo" <noreply@demo.com>';
+    const from = await this.runtimeConfig.getString('MAIL_FROM');
     try {
-      await this.transporter.sendMail({
+      const transporter = await this.createTransporter();
+      await transporter.sendMail({
         from,
         to,
         subject,

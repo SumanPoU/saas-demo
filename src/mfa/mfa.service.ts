@@ -16,6 +16,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { AuthService } from '../auth/auth.service';
 import { MailService } from '../mail/mail.service';
+import { RuntimeConfigService } from '../config/runtime-config.service';
 
 @Injectable()
 export class MfaService {
@@ -27,6 +28,7 @@ export class MfaService {
     private readonly config: ConfigService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
+    private readonly runtimeConfig: RuntimeConfigService,
     @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
   ) {
@@ -109,7 +111,7 @@ export class MfaService {
       },
     });
 
-    const appName = this.config.get<string>('appName') ?? 'DemoApp';
+    const appName = await this.runtimeConfig.getString('APP_NAME');
     const keyuri = authenticator.keyuri(user.email, appName, secret);
     const qrCode = await QRCode.toDataURL(keyuri);
 
@@ -544,7 +546,8 @@ export class MfaService {
     });
 
     // Dispatch recovery notification via MailService
-    const recoveryLink = `${this.config.get<string>('frontendUrl')}/auth/recover-mfa?token=${rawToken}`;
+    const frontendUrl = await this.runtimeConfig.getString('FRONTEND_URL');
+    const recoveryLink = `${frontendUrl}/auth/recover-mfa?token=${rawToken}`;
 
     // Style template
     const subject = 'Disable Multi-Factor Authentication Recovery Link';
@@ -683,7 +686,10 @@ export class MfaService {
       const rawCode = crypto.randomBytes(5).toString('hex').toUpperCase(); // 10 chars, ~40 bits
       plainCodes.push(rawCode);
       hashedData.push({
-        codeHash: await bcrypt.hash(rawCode, 10),
+        codeHash: await bcrypt.hash(
+          rawCode,
+          await this.runtimeConfig.getBcryptSaltRounds(),
+        ),
         mfaConfigId,
       });
     }

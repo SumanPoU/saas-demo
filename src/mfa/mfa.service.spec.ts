@@ -24,6 +24,7 @@ describe('MfaService', () => {
   let config: any;
   let jwtService: any;
   let mailService: any;
+  let runtimeConfig: any;
   let authService: any;
 
   const encryptionKey = 'a'.repeat(64);
@@ -77,6 +78,16 @@ describe('MfaService', () => {
     mailService = {
       sendEmail: jest.fn(),
     };
+    runtimeConfig = {
+      getBcryptSaltRounds: jest.fn().mockResolvedValue(10),
+      getString: jest.fn((key: string) => {
+        const values: Record<string, string> = {
+          APP_NAME: 'DemoApp',
+          FRONTEND_URL: 'http://localhost:3000',
+        };
+        return Promise.resolve(values[key]);
+      }),
+    };
     authService = {
       establishSessionAndIssueTokens: jest.fn(),
     };
@@ -95,6 +106,7 @@ describe('MfaService', () => {
       config,
       jwtService,
       mailService,
+      runtimeConfig,
       authService,
     );
   });

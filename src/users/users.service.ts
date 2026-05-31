@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationService, PaginationQueryDto } from '../common/pagination';
 import { MailService } from '../mail/mail.service';
+import { RuntimeConfigService } from '../config/runtime-config.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 
 const safeUserSelect = {
@@ -41,6 +42,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly pagination: PaginationService,
     private readonly mailService: MailService,
+    private readonly runtimeConfig: RuntimeConfigService,
   ) {}
 
   private generateTemporaryPassword() {
@@ -76,7 +78,8 @@ export class UsersService {
     }
 
     const temporaryPassword = this.generateTemporaryPassword();
-    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    const saltRounds = await this.runtimeConfig.getBcryptSaltRounds();
+    const passwordHash = await bcrypt.hash(temporaryPassword, saltRounds);
 
     const defaultRole = dto.roleIds?.length
       ? null
@@ -169,7 +172,8 @@ export class UsersService {
   async resetUserPassword(id: string, actorId: string) {
     const user = await this.getUserById(id);
     const temporaryPassword = this.generateTemporaryPassword();
-    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    const saltRounds = await this.runtimeConfig.getBcryptSaltRounds();
+    const passwordHash = await bcrypt.hash(temporaryPassword, saltRounds);
 
     await this.prisma.user.update({
       where: { id },
