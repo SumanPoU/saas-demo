@@ -54,12 +54,7 @@ describe('UsersService', () => {
       getBcryptSaltRounds: jest.fn().mockResolvedValue(10),
     };
 
-    service = new UsersService(
-      prisma,
-      pagination,
-      mailService,
-      runtimeConfig,
-    );
+    service = new UsersService(prisma, pagination, mailService, runtimeConfig);
   });
 
   it('creates a user with a generated temporary password and requires password change', async () => {
