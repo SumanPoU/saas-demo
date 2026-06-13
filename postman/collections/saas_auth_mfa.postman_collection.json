@@ -26,8 +26,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/register/initiate",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "register", "initiate"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "register",
+                "initiate"
+              ]
             },
             "description": "Step 1 of the multi-step registration flow. Generates a pending inactive user and triggers an email verification OTP code."
           },
@@ -50,8 +57,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/register/resend-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "register", "resend-otp"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "register",
+                "resend-otp"
+              ]
             },
             "description": "Resends a fresh 6-digit email verification OTP code to the pending registration session."
           },
@@ -74,8 +88,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/register/verify-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "register", "verify-otp"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "register",
+                "verify-otp"
+              ]
             },
             "description": "Verifies the 6-digit registration OTP code, marking the email as verified."
           },
@@ -98,8 +119,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/register/complete",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "register", "complete"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "register",
+                "complete"
+              ]
             },
             "description": "Step 3 of registration. Sets the account password and fully activates the user. Requires manual login afterwards (no tokens are issued)."
           },
@@ -148,7 +176,9 @@
               "listen": "prerequest",
               "script": {
                 "id": "8e68acec-aec4-4e8a-aa0e-a4f57b7bed64",
-                "exec": [""],
+                "exec": [
+                  ""
+                ],
                 "type": "text/javascript",
                 "packages": {},
                 "requests": {}
@@ -170,8 +200,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "login"
+              ]
             },
             "description": "Standard login with credentials. Normal users receive access/refresh tokens. Users with a system-generated temporary password receive passwordChangeToken and must run Set Required Password before logging in again."
           },
@@ -229,8 +265,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "login"
+              ]
             },
             "description": "Use after Create User or Reset User Temporary Password. Paste the emailed temporary password into temporaryPassword. Response should capture passwordChangeToken instead of auth tokens."
           },
@@ -270,8 +312,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/set-required-password",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "set-required-password"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "set-required-password"
+              ]
             },
             "description": "Second step for users who logged in with a system-generated temporary password. Uses passwordChangeToken from login, sets a permanent password, clears mustChangePassword, and requires the user to run Standard Credentials Login again with requiredNewPassword."
           },
@@ -310,8 +358,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/refresh",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "refresh"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "refresh"
+              ]
             },
             "description": "Rotates current active JWT access and refresh token pair using Refresh Token Rotation (RTR) replay/reuse prevention logic."
           },
@@ -335,8 +389,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/auth/profile",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "profile"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "profile"
+              ]
             },
             "description": "Fetch details of the currently authenticated active session."
           },
@@ -369,8 +429,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/change-password",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "change-password"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "change-password"
+              ]
             },
             "description": "Allows changing password from inside active authenticated session. Triggers database force revocation on all other sessions."
           },
@@ -393,8 +459,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/forgot-password",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "forgot-password"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
             },
             "description": "Password recovery Step 1: Searches user and dispatches password recovery OTP code email (preventing user enumeration leaks)."
           },
@@ -417,8 +489,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/reset-password/verify",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "reset-password", "verify"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "reset-password",
+                "verify"
+              ]
             },
             "description": "Password recovery Step 2: Validates reset OTP code, returning success without tokens."
           },
@@ -441,8 +520,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/reset-password/complete",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "reset-password", "complete"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "reset-password",
+                "complete"
+              ]
             },
             "description": "Password recovery Step 3: Hashes new password and terminates all active sessions across all devices."
           },
@@ -480,8 +566,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/oauth/google",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "oauth", "google"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "oauth",
+                "google"
+              ]
             },
             "description": "Google Single Sign-On (SSO) OAuth callback code exchange with auto-registration, multi-provider mapping linking, and mock bypass flags for offline local dev tests."
           },
@@ -519,8 +612,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/auth/oauth/github",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "oauth", "github"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "oauth",
+                "github"
+              ]
             },
             "description": "GitHub Single Sign-On (SSO) OAuth callback code exchange with auto-registration, multi-provider mapping linking, and mock bypass flags for offline local dev tests."
           },
@@ -560,8 +660,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/auth/logout",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "logout"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "logout"
+              ]
             },
             "description": "Logout the active user session. Revokes the session in the database and invalidates associated refresh tokens."
           },
@@ -592,8 +698,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/mfa/setup",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "mfa", "setup"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "setup"
+              ]
             },
             "description": "MFA Step 1: Protected JWT request to initiate TOTP setup. Encrypts the derived base32 secret in the database and returns a Base64 encoded QR Code data URL."
           },
@@ -626,8 +738,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/mfa/verify-setup",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "mfa", "verify-setup"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "verify-setup"
+              ]
             },
             "description": "MFA Step 2: Validates the TOTP authenticator code, fully enables MFA on the account, and returns 8 bcrypt-hashed backup codes *once*."
           },
@@ -658,7 +776,9 @@
               "listen": "prerequest",
               "script": {
                 "id": "a12b7537-8e15-4cb5-a8a5-5f702de7407c",
-                "exec": [""],
+                "exec": [
+                  ""
+                ],
                 "type": "text/javascript",
                 "packages": {},
                 "requests": {}
@@ -680,8 +800,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/mfa/verify-login",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "mfa", "verify-login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "verify-login"
+              ]
             },
             "description": "Completes standard logins when MFA is active. Accepts the short-lived `mfaPendingToken` combined with either a 6-digit TOTP code or an 8-character single-use backup code. Returns active JWT session tokens."
           },
@@ -704,8 +830,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/mfa/verify-device",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "mfa", "verify-device"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "verify-device"
+              ]
             },
             "description": "Public endpoint confirming the email token link generated when standard logins detect an unrecognized userAgent/device details."
           },
@@ -738,8 +870,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/mfa/backup-codes/regenerate",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "mfa", "backup-codes", "regenerate"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "backup-codes",
+                "regenerate"
+              ]
             },
             "description": "Requires a valid TOTP code to confirm authorization, purges old backup codes, and returns 8 fresh new ones."
           },
@@ -772,8 +911,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/mfa/disable",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "mfa", "disable"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "disable"
+              ]
             },
             "description": "Deactivates Multi-Factor Authentication. Requires a valid TOTP confirmation code and terminates all backup codes."
           },
@@ -796,8 +941,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/mfa/recover",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "mfa", "recover"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "recover"
+              ]
             },
             "description": "Step 1 of MFA account recovery. Generates a secure recovery token and dispatches an email containing the link to disable MFA (preventing user enumeration leaks)."
           },
@@ -820,8 +971,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/mfa/recover/verify",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "mfa", "recover", "verify"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mfa",
+                "recover",
+                "verify"
+              ]
             },
             "description": "Step 2 of MFA account recovery. Validates the emailed recovery link token, dispatches deactivation, and purges MFA settings on the user account."
           },
@@ -883,8 +1041,14 @@
                     },
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions/groups",
-                      "host": ["{{baseUrl}}"],
-                      "path": ["v1", "permissions", "groups"]
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "groups"
+                      ]
                     },
                     "description": "Creates a permission group and stores permissionGroupId."
                   },
@@ -925,8 +1089,14 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions/groups",
-                      "host": ["{{baseUrl}}"],
-                      "path": ["v1", "permissions", "groups"]
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "groups"
+                      ]
                     },
                     "description": "Lists permission groups and captures the first group id when present."
                   },
@@ -950,14 +1120,17 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions/groups/{{permissionGroupId}}",
-                      "host": ["{{baseUrl}}"],
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
                       "path": [
                         "v1",
                         "permissions",
                         "groups",
                         "{{permissionGroupId}}"
                       ]
-                    }
+                    },
+                    "description": "Retrieves detailed information about a specific permission group by its unique identifier."
                   },
                   "response": []
                 },
@@ -988,14 +1161,17 @@
                     },
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions/groups/{{permissionGroupId}}",
-                      "host": ["{{baseUrl}}"],
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
                       "path": [
                         "v1",
                         "permissions",
                         "groups",
                         "{{permissionGroupId}}"
                       ]
-                    }
+                    },
+                    "description": "Updates the name or description of an existing permission group."
                   },
                   "response": []
                 },
@@ -1017,14 +1193,17 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions/groups/{{permissionGroupId}}",
-                      "host": ["{{baseUrl}}"],
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
                       "path": [
                         "v1",
                         "permissions",
                         "groups",
                         "{{permissionGroupId}}"
                       ]
-                    }
+                    },
+                    "description": "Permanently removes a permission group from the system. Ensure no critical permissions are orphaned."
                   },
                   "response": []
                 }
@@ -1077,8 +1256,13 @@
                     },
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions",
-                      "host": ["{{baseUrl}}"],
-                      "path": ["v1", "permissions"]
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions"
+                      ]
                     },
                     "description": "Creates a permission and stores permissionId."
                   },
@@ -1109,7 +1293,9 @@
                       "listen": "prerequest",
                       "script": {
                         "id": "f44ec7db-8ef1-4652-87ff-274f380ee845",
-                        "exec": [""],
+                        "exec": [
+                          ""
+                        ],
                         "type": "text/javascript",
                         "packages": {},
                         "requests": {}
@@ -1132,8 +1318,13 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions?page=1&limit=25&search=ss",
-                      "host": ["{{baseUrl}}"],
-                      "path": ["v1", "permissions"],
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions"
+                      ],
                       "query": [
                         {
                           "key": "page",
@@ -1173,9 +1364,16 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions/{{permissionId}}",
-                      "host": ["{{baseUrl}}"],
-                      "path": ["v1", "permissions", "{{permissionId}}"]
-                    }
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "{{permissionId}}"
+                      ]
+                    },
+                    "description": "Fetches details of a specific permission including the groups it belongs to."
                   },
                   "response": []
                 },
@@ -1206,9 +1404,16 @@
                     },
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions/{{permissionId}}",
-                      "host": ["{{baseUrl}}"],
-                      "path": ["v1", "permissions", "{{permissionId}}"]
-                    }
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "{{permissionId}}"
+                      ]
+                    },
+                    "description": "Modifies the details of a permission (e.g., name, description, resource type)."
                   },
                   "response": []
                 },
@@ -1239,14 +1444,17 @@
                     },
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions/{{permissionId}}/groups",
-                      "host": ["{{baseUrl}}"],
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
                       "path": [
                         "v1",
                         "permissions",
                         "{{permissionId}}",
                         "groups"
                       ]
-                    }
+                    },
+                    "description": "Assigns an existing permission to one or more permission groups."
                   },
                   "response": []
                 },
@@ -1277,14 +1485,17 @@
                     },
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions/{{permissionId}}/groups",
-                      "host": ["{{baseUrl}}"],
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
                       "path": [
                         "v1",
                         "permissions",
                         "{{permissionId}}",
                         "groups"
                       ]
-                    }
+                    },
+                    "description": "Unlinks a permission from the specified permission groups."
                   },
                   "response": []
                 },
@@ -1306,8 +1517,14 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/v1/permissions/{{permissionId}}",
-                      "host": ["{{baseUrl}}"],
-                      "path": ["v1", "permissions", "{{permissionId}}"]
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "permissions",
+                        "{{permissionId}}"
+                      ]
                     },
                     "description": "Deletes permissionId. This fails if the permission is still assigned to roles."
                   },
@@ -1366,8 +1583,13 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/roles",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["v1", "roles"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles"
+                  ]
                 },
                 "description": "Creates a role and stores roleId."
               },
@@ -1408,8 +1630,13 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/v1/roles",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["v1", "roles"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles"
+                  ]
                 },
                 "description": "Lists roles and captures the first custom role id."
               },
@@ -1433,9 +1660,16 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/v1/roles/{{roleId}}",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["v1", "roles", "{{roleId}}"]
-                }
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}"
+                  ]
+                },
+                "description": "Retrieves detailed information about a specific role, including all its assigned permissions."
               },
               "response": []
             },
@@ -1466,9 +1700,16 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/roles/{{roleId}}",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["v1", "roles", "{{roleId}}"]
-                }
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}"
+                  ]
+                },
+                "description": "Modifies the name or description of a role. Default roles cannot be deleted but can be updated."
               },
               "response": []
             },
@@ -1499,9 +1740,17 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/roles/{{roleId}}/permissions",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["v1", "roles", "{{roleId}}", "permissions"]
-                }
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}",
+                    "permissions"
+                  ]
+                },
+                "description": "Grants additional permissions to a role by linking them."
               },
               "response": []
             },
@@ -1532,9 +1781,17 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/roles/{{roleId}}/permissions",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["v1", "roles", "{{roleId}}", "permissions"]
-                }
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}",
+                    "permissions"
+                  ]
+                },
+                "description": "Revokes specific permissions from a role."
               },
               "response": []
             },
@@ -1565,8 +1822,15 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/roles/{{roleId}}/users",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["v1", "roles", "{{roleId}}", "users"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}",
+                    "users"
+                  ]
                 },
                 "description": "Assigns roleId to userId. Run Remove Role from Users before deleting the role."
               },
@@ -1599,9 +1863,17 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/roles/{{roleId}}/users",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["v1", "roles", "{{roleId}}", "users"]
-                }
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}",
+                    "users"
+                  ]
+                },
+                "description": "Detaches the role from a specific user or list of users, reducing their access privileges."
               },
               "response": []
             },
@@ -1623,9 +1895,18 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/v1/roles/user/{{userId}}/roles",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["v1", "roles", "user", "{{userId}}", "roles"]
-                }
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "user",
+                    "{{userId}}",
+                    "roles"
+                  ]
+                },
+                "description": "Lists all roles currently assigned to a specific user."
               },
               "response": []
             },
@@ -1647,8 +1928,14 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/v1/roles/{{roleId}}",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["v1", "roles", "{{roleId}}"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "roles",
+                    "{{roleId}}"
+                  ]
                 },
                 "description": "Deletes roleId. This fails if the role is still assigned to users."
               },
@@ -1711,8 +1998,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "users"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "users"
+              ]
             },
             "description": "Admin creates a user. Do not send a password: the API generates a temporary password, emails it to the user, and sets mustChangePassword=true."
           },
@@ -1736,8 +2028,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/users?page=1&limit=25",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "users"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "users"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -1771,10 +2068,16 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "users", "{{userId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
             },
-            "description": ""
+            "description": "Retrieves the complete profile and state of a specific user."
           },
           "response": []
         },
@@ -1805,10 +2108,16 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "users", "{{userId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
             },
-            "description": ""
+            "description": "Updates user information such as name, active status, or roles. Used by administrators to manage accounts."
           },
           "response": []
         },
@@ -1830,8 +2139,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/users/{{userId}}/reset-password",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "users", "{{userId}}", "reset-password"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "users",
+                "{{userId}}",
+                "reset-password"
+              ]
             },
             "description": "Admin generates a new temporary password for userId. The password is emailed to that user, mustChangePassword is set to true, and active sessions/tokens are revoked. Paste the emailed value into temporaryPassword before testing login."
           },
@@ -1855,8 +2171,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "users", "{{userId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
             },
             "description": "Admin soft-deletes userId by setting isActive=false and revoking sessions. The current authenticated admin cannot delete their own account."
           },
@@ -1886,8 +2208,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/audit?page=1&limit=25",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "audit"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "audit"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -1921,8 +2248,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/v1/global-config",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "global-config"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "global-config"
+              ]
             },
             "description": "Admin-only endpoint. Lists global_config records. Optional query: category=system, security, auth, or mail."
           },
@@ -1949,8 +2281,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/global-config",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "global-config"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "global-config"
+              ]
             },
             "description": "Admin-only endpoint. Creates a global_config record by key."
           },
@@ -1969,8 +2306,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/v1/global-config/app",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "global-config", "app"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "global-config",
+                "app"
+              ]
             },
             "description": "Admin-only endpoint. Retrieves one global_config record by key. Runtime keys include bcrypt, throttle, jwt, app, and mail."
           },
@@ -1997,8 +2340,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/global-config/app",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "global-config", "app"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "global-config",
+                "app"
+              ]
             },
             "description": "Admin-only endpoint. Updates a global_config record by key. For example, PATCH /v1/global-config/app updates app.name and app.frontendUrl."
           },
