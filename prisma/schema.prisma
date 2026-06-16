@@ -4,14 +4,252 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider     = "prisma-client-js"
-  moduleFormat = "cjs"
+  provider        = "prisma-client-js"
+  moduleFormat    = "cjs"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["public"]
 }
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  PAUSED
+  INCOMPLETE
+
+  @@schema("public")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+  UNCOLLECTIBLE
+
+  @@schema("public")
+}
+
+model Tenant {
+  id          String      @id @default(uuid()) @db.Uuid
+  slug        String      @unique
+  name        String
+  planId      String?     @db.Uuid
+  plan        TenantPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  isActive    Boolean     @default(true)
+  trialEndsAt DateTime?
+  schemaName  String      @unique
+  settings    Json?
+
+  deletedAt           DateTime?
+  deletionRequestedAt DateTime?
+  restorationToken    String?   @unique
+
+  migrationVersion Int @default(1)
+  schemaVersion    Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships TenantMembership[]
+  invitations TenantInvitation[]
+  sessions    UserSession[]
+  auditLogs   AuditLog[]
+  roles       Role[]
+  permissions Permission[]
+  permGroups  PermissionGroup[]
+
+  subscriptions        Subscription[]
+  planLimitViolations  PlanLimitViolation[]
+  featureFlagOverrides FeatureFlagOverride[]
+  apiUsage             ApiUsage[]
+  emailLogs            EmailLog[]
+
+  @@index([planId])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@index([schemaVersion])
+  @@map("tenants")
+  @@schema("public")
+}
+
+model TenantPlan {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @unique
+  maxUsers     Int      @default(5)
+  maxSeats     Int      @default(10)
+  featureFlags Json?
+  priceMonthly Decimal? @db.Decimal(10, 2)
+  priceYearly  Decimal? @db.Decimal(10, 2)
+  isPublic     Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenants       Tenant[]
+  subscriptions Subscription[]
+
+  @@map("tenant_plans")
+  @@schema("public")
+}
+
+model Subscription {
+  id       String     @id @default(uuid()) @db.Uuid
+  tenantId String     @db.Uuid
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planId   String     @db.Uuid
+  plan     TenantPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  status             SubscriptionStatus @default(TRIALING)
+  externalId         String?
+  billingInterval    String?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean            @default(false)
+  canceledAt         DateTime?
+  trialStart         DateTime?
+  trialEnd           DateTime?
+
+  quantity Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices            Invoice[]
+  subscriptionHistory SubscriptionHistory[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([externalId])
+  @@index([currentPeriodEnd])
+  @@map("subscriptions")
+  @@schema("public")
+}
+
+model SubscriptionHistory {
+  id             String       @id @default(uuid()) @db.Uuid
+  subscriptionId String       @db.Uuid
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  previousStatus SubscriptionStatus
+  newStatus      SubscriptionStatus
+  changedBy      String?
+  reason         String?
+  payload        Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([subscriptionId])
+  @@index([createdAt])
+  @@map("subscription_history")
+  @@schema("public")
+}
+
+model Invoice {
+  id             String       @id @default(uuid()) @db.Uuid
+  subscriptionId String       @db.Uuid
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  tenantId       String       @db.Uuid
+
+  externalId  String?       @unique
+  status      InvoiceStatus @default(DRAFT)
+  amountDue   Decimal       @db.Decimal(10, 2)
+  amountPaid  Decimal       @default(0) @db.Decimal(10, 2)
+  currency    String        @default("USD") @db.VarChar(3)
+  periodStart DateTime?
+  periodEnd   DateTime?
+  dueDate     DateTime?
+  paidAt      DateTime?
+  invoicePdf  String?
+  hostedUrl   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subscriptionId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+  @@schema("public")
+}
+
+model ApiUsage {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  endpoint     String
+  windowStart  DateTime
+  windowEnd    DateTime
+  requestCount Int      @default(0)
+  limitValue   Int
+  isExceeded   Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, endpoint, windowStart])
+  @@index([tenantId])
+  @@index([windowStart])
+  @@index([isExceeded])
+  @@map("api_usage")
+  @@schema("public")
+}
+
+model PlanLimitViolation {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  limitType   String
+  limitValue  Int
+  actualValue Int
+  action      String
+  wasBlocked  Boolean   @default(true)
+  resolvedAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, limitType])
+  @@index([wasBlocked, createdAt])
+  @@map("plan_limit_violations")
+  @@schema("public")
+}
+
+model FeatureFlagOverride {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  flagKey   String
+  flagValue Json
+  reason    String?
+  setBy     String?   @db.Uuid
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, flagKey])
+  @@index([tenantId])
+  @@index([expiresAt])
+  @@map("feature_flag_overrides")
+  @@schema("public")
+}
+
+// =============================================================================
+// USERS
+// Exist independently of any tenant; joined via TenantMembership
+// =============================================================================
 
 model User {
   id                 String    @id @default(uuid()) @db.Uuid
@@ -30,15 +268,11 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  // Role relations
-  roles                   Role[]           @relation("UserRoles")
-  rolePermissionsAssigned RolePermission[] @relation("RolePermissionAssignedBy")
-
-  // Permission relations
-  permissionsCreated      Permission[]      @relation("PermissionCreatedBy")
-  permissionGroupsCreated PermissionGroup[] @relation("PermissionGroupCreatedBy")
-
-  // Session & token relations
+  tenantMemberships       TenantMembership[]
+  roles                   Role[]                   @relation("UserRoles")
+  rolePermissionsAssigned RolePermission[]         @relation("RolePermissionAssignedBy")
+  permissionsCreated      Permission[]             @relation("PermissionCreatedBy")
+  permGroupsCreated       PermissionGroup[]        @relation("PermissionGroupCreatedBy")
   sessions                UserSession[]
   refreshTokens           RefreshToken[]
   passwordResetTokens     PasswordResetToken[]
@@ -46,16 +280,63 @@ model User {
   mfaConfig               MfaConfig?
   mfaRecoveryTokens       MfaRecoveryToken[]
   oauthAccounts           OAuthAccount[]
+  auditLogs               AuditLog[]
 
-  // Audit
-  auditLogs AuditLog[]
-
+  @@index([email])
+  @@index([isActive])
   @@map("users")
+  @@schema("public")
 }
+
+model TenantMembership {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String @db.Uuid
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role      String   @default("member")
+  isOwner   Boolean  @default(false)
+  joinedAt  DateTime @default(now())
+  invitedBy String?  @db.Uuid
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@map("tenant_memberships")
+  @@schema("public")
+}
+
+model TenantInvitation {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email       String
+  role        String    @default("member")
+  tokenHash   String    @unique
+  isAccepted  Boolean   @default(false)
+  acceptedAt  DateTime?
+  invitedById String?   @db.Uuid
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([tenantId])
+  @@index([expiresAt])
+  @@index([email])
+  @@map("tenant_invitations")
+  @@schema("public")
+}
+
+// =============================================================================
+// RBAC  (tenant-scoped; tenantId = null means platform-level)
+// =============================================================================
 
 model Role {
   id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique
+  tenantId    String?  @db.Uuid
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
   description String?
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
@@ -64,28 +345,40 @@ model Role {
   users           User[]           @relation("UserRoles")
   rolePermissions RolePermission[]
 
+  @@unique([tenantId, name])
+  @@index([tenantId])
   @@map("roles")
+  @@schema("public")
 }
 
 model Permission {
-  id          String  @id @default(uuid()) @db.Uuid
-  name        String  @unique
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String? @db.Uuid
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
   description String?
 
-  groups      PermissionGroup[] @relation("GroupPermissions")
-  createdBy   String?           @db.Uuid
-  createdUser User?             @relation("PermissionCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
-
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  groups          PermissionGroup[] @relation("GroupPermissions")
+  createdBy       String?           @db.Uuid
+  createdUser     User?             @relation("PermissionCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
   rolePermissions RolePermission[]
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
   @@map("permissions")
+  @@schema("public")
 }
 
 model PermissionGroup {
-  id          String       @id @default(uuid()) @db.Uuid
-  name        String       @unique
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String? @db.Uuid
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
   description String?
   permissions Permission[] @relation("GroupPermissions")
 
@@ -95,16 +388,21 @@ model PermissionGroup {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, name])
+  @@index([tenantId])
   @@map("permission_groups")
+  @@schema("public")
 }
 
 model RolePermission {
-  id           String @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
+
+  tenantId     String @db.Uuid
   roleId       String @db.Uuid
   permissionId String @db.Uuid
 
-  role       Role       @relation(fields: [roleId], references: [id])
-  permission Permission @relation(fields: [permissionId], references: [id])
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   assignedById String? @db.Uuid
   assignedBy   User?   @relation("RolePermissionAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
@@ -113,35 +411,44 @@ model RolePermission {
   updatedAt DateTime @updatedAt
 
   @@unique([roleId, permissionId])
+  @@index([tenantId])
+  @@index([roleId])
+  @@index([permissionId])
   @@map("role_permissions")
+  @@schema("public")
 }
+
+// =============================================================================
+// SESSIONS & TOKENS
+// =============================================================================
 
 model UserSession {
   id       String @id @default(uuid()) @db.Uuid
   userId   String @db.Uuid
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenantId String
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Device / client metadata
-  deviceName String? // e.g. "iPhone 15", "Chrome on Windows"
-  deviceType String? // e.g. "mobile", "desktop", "tablet"
-  platform   String? // e.g. "iOS", "Windows", "Android"
+  deviceName String?
+  deviceType String?
+  platform   String?
   userAgent  String?
   ipAddress  String?
 
   isRevoked Boolean   @default(false)
   revokedAt DateTime?
-  revokedBy String?   @db.Uuid // userId who triggered revocation (for admin force-logout)
+  revokedBy String?   @db.Uuid
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  expiresAt DateTime // hard session TTL (e.g. 90 days of inactivity)
-
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  expiresAt     DateTime
   refreshTokens RefreshToken[]
 
   @@index([userId])
   @@index([tenantId, userId])
+  @@index([expiresAt])
   @@map("user_sessions")
+  @@schema("public")
 }
 
 model RefreshToken {
@@ -150,50 +457,54 @@ model RefreshToken {
   session   UserSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId    String      @db.Uuid
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenantId  String
+  tenantId  String      @db.Uuid
 
-  tokenHash String    @unique // sha256 of the raw token sent to client
-  familyId  String // groups rotation chain; reuse of any token in family revokes all
-  isUsed    Boolean   @default(false)
-  isRevoked Boolean   @default(false)
-  usedAt    DateTime?
-  revokedAt DateTime?
-
-  // Successor token (populated when this token is rotated)
+  tokenHash         String    @unique
+  familyId          String
+  isUsed            Boolean   @default(false)
+  isRevoked         Boolean   @default(false)
+  usedAt            DateTime?
+  revokedAt         DateTime?
   replacedByTokenId String?
 
   createdAt DateTime @default(now())
-  expiresAt DateTime // e.g. now + 30 days
+  expiresAt DateTime
 
   @@index([userId])
   @@index([familyId])
   @@index([sessionId])
+  @@index([tenantId])
+  @@index([expiresAt])
   @@map("refresh_tokens")
+  @@schema("public")
 }
 
 model PasswordResetToken {
   id       String @id @default(uuid()) @db.Uuid
   userId   String @db.Uuid
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenantId String
+  tenantId String @db.Uuid
 
   tokenHash String    @unique
   isUsed    Boolean   @default(false)
   usedAt    DateTime?
 
   createdAt DateTime @default(now())
-  expiresAt DateTime // e.g. now + 1 hour
+  expiresAt DateTime
 
   @@index([userId])
+  @@index([tenantId])
+  @@index([expiresAt])
   @@map("password_reset_tokens")
+  @@schema("public")
 }
 
 model EmailVerificationToken {
   id       String @id @default(uuid()) @db.Uuid
   userId   String @db.Uuid
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenantId String
-  email    String // the email being verified (may differ from current user.email)
+  tenantId String @db.Uuid
+  email    String
   purpose  String @default("email_verify")
 
   tokenHash String    @unique
@@ -201,10 +512,13 @@ model EmailVerificationToken {
   usedAt    DateTime?
 
   createdAt DateTime @default(now())
-  expiresAt DateTime // e.g. now + 24 hours
+  expiresAt DateTime
 
   @@index([userId])
+  @@index([tenantId])
+  @@index([expiresAt])
   @@map("email_verification_tokens")
+  @@schema("public")
 }
 
 model MfaConfig {
@@ -212,20 +526,17 @@ model MfaConfig {
   userId String @unique @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  method    String // e.g. "totp", "webauthn"
-  isEnabled Boolean @default(false)
-
-  // TOTP fields (encrypted at rest via app-layer encryption before storing)
-  totpSecret     String? // base32 seed, encrypted
-  totpVerifiedAt DateTime? // null until user completes first TOTP verification
-
-  // Backup / recovery codes (bcrypt-hashed, single-use)
-  backupCodes MfaBackupCode[]
+  method         String
+  isEnabled      Boolean         @default(false)
+  totpSecret     String?
+  totpVerifiedAt DateTime?
+  backupCodes    MfaBackupCode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("mfa_configs")
+  @@schema("public")
 }
 
 model MfaBackupCode {
@@ -233,7 +544,7 @@ model MfaBackupCode {
   mfaConfigId String    @db.Uuid
   mfaConfig   MfaConfig @relation(fields: [mfaConfigId], references: [id], onDelete: Cascade)
 
-  codeHash String    @unique // bcrypt of the raw 8-char code shown to user
+  codeHash String    @unique
   isUsed   Boolean   @default(false)
   usedAt   DateTime?
 
@@ -241,7 +552,75 @@ model MfaBackupCode {
 
   @@index([mfaConfigId])
   @@map("mfa_backup_codes")
+  @@schema("public")
 }
+
+model MfaRecoveryToken {
+  id       String @id @default(uuid()) @db.Uuid
+  userId   String @db.Uuid
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId String @db.Uuid
+
+  tokenHash String    @unique
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([expiresAt])
+  @@map("mfa_recovery_tokens")
+  @@schema("public")
+}
+
+model OAuthAccount {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String
+  providerId String
+  createdAt  DateTime @default(now())
+
+  @@unique([provider, providerId])
+  @@index([userId])
+  @@map("oauth_accounts")
+  @@schema("public")
+}
+
+model EmailLog {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String? @db.Uuid
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  userId   String? @db.Uuid // may be null for pre-registration emails
+
+  toEmail    String
+  subject    String
+  template   String
+  status     String    @default("sent")
+  externalId String?
+  openedAt   DateTime?
+  clickedAt  DateTime?
+  bouncedAt  DateTime?
+
+  anonymizedAt DateTime?
+  deletedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([toEmail])
+  @@index([template, status])
+  @@index([createdAt])
+  @@map("email_logs")
+  @@schema("public")
+}
+
+// =============================================================================
+// PLATFORM CONFIG & AUDIT
+// =============================================================================
 
 model GlobalConfig {
   id        String   @id @default(uuid()) @db.Uuid
@@ -253,13 +632,19 @@ model GlobalConfig {
 
   @@index([category])
   @@map("global_config")
+  @@schema("public")
 }
 
 model AuditLog {
-  id         String   @id @default(uuid()) @db.Uuid
-  tenantId   String
-  actorId    String   @db.Uuid
-  actor      User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String? @db.Uuid
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  actorId  String? @db.Uuid
+  actor    User?   @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  tenantSlug String?
+  actorEmail String?
+
   action     String
   entityType String
   entityId   String
@@ -268,36 +653,11 @@ model AuditLog {
   userAgent  String?
   createdAt  DateTime @default(now())
 
+  @@index([tenantId])
   @@index([actorId])
   @@index([createdAt])
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
   @@map("audit_logs")
-}
-
-model OAuthAccount {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @db.Uuid
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider   String // e.g. "google", "github"
-  providerId String // unique id on Google/GitHub
-  createdAt  DateTime @default(now())
-
-  @@unique([provider, providerId])
-  @@map("oauth_accounts")
-}
-
-model MfaRecoveryToken {
-  id       String @id @default(uuid()) @db.Uuid
-  userId   String @db.Uuid
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenantId String
-
-  tokenHash String    @unique
-  isUsed    Boolean   @default(false)
-  usedAt    DateTime?
-
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-
-  @@index([userId])
-  @@map("mfa_recovery_tokens")
+  @@schema("public")
 }
