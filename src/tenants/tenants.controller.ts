@@ -1,5 +1,19 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { TenantsService } from './tenants.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
@@ -26,10 +40,10 @@ export class TenantsController {
         data: {
           id: 'tenant-id',
           name: 'My Workspace',
-          domain: 'my-workspace'
-        }
-      }
-    }
+          domain: 'my-workspace',
+        },
+      },
+    },
   })
   create(@CurrentUser() user: any, @Body() dto: CreateTenantDto) {
     return this.tenantsService.create(user.userId || user.id, dto);
@@ -48,14 +62,17 @@ export class TenantsController {
           {
             id: 'tenant-id',
             name: 'My Workspace',
-            domain: 'my-workspace'
-          }
-        ]
-      }
-    }
+            domain: 'my-workspace',
+          },
+        ],
+      },
+    },
   })
   findAll(@CurrentUser() user: any) {
-    return this.tenantsService.findAll(user.userId || user.id, user.isSuperAdmin);
+    return this.tenantsService.findAll(
+      user.userId || user.id,
+      user.isSuperAdmin,
+    );
   }
 
   @Get(':id')
@@ -72,10 +89,10 @@ export class TenantsController {
           id: 'tenant-id',
           name: 'My Workspace',
           domain: 'my-workspace',
-          isActive: true
-        }
-      }
-    }
+          isActive: true,
+        },
+      },
+    },
   })
   findOne(@Param('id') id: string) {
     return this.tenantsService.findOne(id);
@@ -94,10 +111,10 @@ export class TenantsController {
         data: {
           id: 'tenant-id',
           name: 'My Updated Workspace',
-          domain: 'my-updated-workspace'
-        }
-      }
-    }
+          domain: 'my-updated-workspace',
+        },
+      },
+    },
   })
   update(@Param('id') id: string, @Body() dto: UpdateTenantDto) {
     return this.tenantsService.update(id, dto);
@@ -113,9 +130,9 @@ export class TenantsController {
       example: {
         statusCode: 200,
         message: 'Workspace deleted successfully',
-        data: null
-      }
-    }
+        data: null,
+      },
+    },
   })
   remove(@Param('id') id: string) {
     return this.tenantsService.remove(id);

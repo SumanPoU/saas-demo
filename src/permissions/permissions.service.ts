@@ -41,7 +41,9 @@ export class PermissionsService {
    * recording which admin created it.
    */
   async createPermission(dto: CreatePermissionDto, reqUser?: any) {
-    const tenantId = reqUser?.isSuperAdmin ? (dto as any).tenantId || reqUser?.tenantId : reqUser?.tenantId;
+    const tenantId = reqUser?.isSuperAdmin
+      ? (dto as any).tenantId || reqUser?.tenantId
+      : reqUser?.tenantId;
     const existingPermission = await this.prisma.permission.findFirst({
       where: { name: dto.name, tenantId },
     });
@@ -149,7 +151,8 @@ export class PermissionsService {
     await this.getPermissionById(id);
 
     if (dto.name) {
-      const existingPermission = await this.prisma.permission.findFirst({ where: { name: dto.name },
+      const existingPermission = await this.prisma.permission.findFirst({
+        where: { name: dto.name },
       });
 
       if (existingPermission && existingPermission.id !== id) {
@@ -250,11 +253,10 @@ export class PermissionsService {
    * Validates group name uniqueness and persists a new permission group,
    * optionally recording which admin created it.
    */
-  async createPermissionGroup(
-    dto: CreatePermissionGroupDto,
-    reqUser?: any,
-  ) {
-    const tenantId = reqUser?.isSuperAdmin ? (dto as any).tenantId || reqUser?.tenantId : reqUser?.tenantId;
+  async createPermissionGroup(dto: CreatePermissionGroupDto, reqUser?: any) {
+    const tenantId = reqUser?.isSuperAdmin
+      ? (dto as any).tenantId || reqUser?.tenantId
+      : reqUser?.tenantId;
     const existingGroup = await this.prisma.permissionGroup.findFirst({
       where: { name: dto.name, tenantId },
     });
@@ -335,7 +337,8 @@ export class PermissionsService {
     await this.getPermissionGroupById(id);
 
     if (dto.name) {
-      const existingGroup = await this.prisma.permissionGroup.findFirst({ where: { name: dto.name },
+      const existingGroup = await this.prisma.permissionGroup.findFirst({
+        where: { name: dto.name },
       });
 
       if (existingGroup && existingGroup.id !== id) {

@@ -55,10 +55,10 @@ export class PermissionsController {
         data: {
           id: 'perm-id',
           action: 'users:read',
-          description: 'Read users'
-        }
-      }
-    }
+          description: 'Read users',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -89,18 +89,21 @@ export class PermissionsController {
         message: 'Permissions retrieved successfully',
         data: {
           items: [
-            { id: 'perm-id', action: 'users:read', description: 'Read users' }
+            { id: 'perm-id', action: 'users:read', description: 'Read users' },
           ],
           total: 1,
           page: 1,
           limit: 10,
-          totalPages: 1
-        }
-      }
-    }
+          totalPages: 1,
+        },
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getAllPermissions(@Query() query: PaginationQueryDto, @CurrentUser() user: any) {
+  async getAllPermissions(
+    @Query() query: PaginationQueryDto,
+    @CurrentUser() user: any,
+  ) {
     return this.permissionsService.getAllPermissions(query, user);
   }
 
@@ -124,10 +127,10 @@ export class PermissionsController {
         data: {
           id: 'group-id',
           name: 'User Management',
-          description: 'Manage users'
-        }
-      }
-    }
+          description: 'Manage users',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -161,11 +164,17 @@ export class PermissionsController {
             id: 'group-id',
             name: 'User Management',
             description: 'Manage users',
-            permissions: [{ id: 'perm-id', action: 'users:read', description: 'Read users' }]
-          }
-        ]
-      }
-    }
+            permissions: [
+              {
+                id: 'perm-id',
+                action: 'users:read',
+                description: 'Read users',
+              },
+            ],
+          },
+        ],
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAllPermissionGroups(@CurrentUser() user: any) {
@@ -189,14 +198,19 @@ export class PermissionsController {
           id: 'group-id',
           name: 'User Management',
           description: 'Manage users',
-          permissions: [{ id: 'perm-id', action: 'users:read', description: 'Read users' }]
-        }
-      }
-    }
+          permissions: [
+            { id: 'perm-id', action: 'users:read', description: 'Read users' },
+          ],
+        },
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'Permission group not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getPermissionGroupById(@Param('id') id: string, @CurrentUser() user: any) {
+  async getPermissionGroupById(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
     return this.permissionsService.getPermissionGroupById(id, user);
   }
 
@@ -216,10 +230,10 @@ export class PermissionsController {
         data: {
           id: 'group-id',
           name: 'User Management',
-          description: 'Manage users updated'
-        }
-      }
-    }
+          description: 'Manage users updated',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -266,10 +280,10 @@ export class PermissionsController {
         data: {
           id: 'perm-id',
           action: 'users:read',
-          description: 'Read users'
-        }
-      }
-    }
+          description: 'Read users',
+        },
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'Permission not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -293,10 +307,10 @@ export class PermissionsController {
         data: {
           id: 'perm-id',
           action: 'users:read',
-          description: 'Read users updated'
-        }
-      }
-    }
+          description: 'Read users updated',
+        },
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Permission name already taken' })
   @ApiResponse({ status: 404, description: 'Permission not found' })
@@ -340,9 +354,9 @@ export class PermissionsController {
       example: {
         statusCode: 200,
         message: 'Permission successfully assigned to group(s)',
-        data: { count: 1 }
-      }
-    }
+        data: { count: 1 },
+      },
+    },
   })
   @ApiResponse({
     status: 400,

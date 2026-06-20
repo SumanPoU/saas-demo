@@ -1,6 +1,15 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { InviteMemberDto, AcceptInvitationDto, UpdateMemberDto } from './dto/tenant-members.dto';
+import {
+  InviteMemberDto,
+  AcceptInvitationDto,
+  UpdateMemberDto,
+} from './dto/tenant-members.dto';
 import { MailService } from '../mail/mail.service';
 import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
@@ -13,16 +22,25 @@ export class TenantMembersService {
     private usersService: UsersService,
   ) {}
 
-  async inviteMember(tenantId: string, dto: InviteMemberDto, inviterId: string) {
+  async inviteMember(
+    tenantId: string,
+    dto: InviteMemberDto,
+    inviterId: string,
+  ) {
     const email = dto.email.toLowerCase();
 
     // Check if already a member
-    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
     if (existingUser) {
       const isMember = await this.prisma.tenantMembership.findUnique({
         where: { tenantId_userId: { tenantId, userId: existingUser.id } },
       });
-      if (isMember) throw new ConflictException('User is already a member of this workspace');
+      if (isMember)
+        throw new ConflictException(
+          'User is already a member of this workspace',
+        );
     }
 
     // Generate token
@@ -40,12 +58,17 @@ export class TenantMembersService {
       },
     });
 
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
 
     // In a real app, you would send an email with a link to accept the invitation
     // e.g., await this.mailService.sendWorkspaceInvitation(email, tenant.name, token);
 
-    return { message: 'Invitation sent successfully', token: invitation.tokenHash };
+    return {
+      message: 'Invitation sent successfully',
+      token: invitation.tokenHash,
+    };
   }
 
   async acceptInvitation(dto: AcceptInvitationDto) {
@@ -55,18 +78,27 @@ export class TenantMembersService {
     });
 
     if (!invitation) throw new NotFoundException('Invalid invitation token');
-    if (invitation.expiresAt < new Date()) throw new BadRequestException('Invitation has expired');
+    if (invitation.expiresAt < new Date())
+      throw new BadRequestException('Invitation has expired');
 
     return this.prisma.$transaction(async (tx) => {
-      let user: any = await tx.user.findUnique({ where: { email: invitation.email } });
+      let user: any = await tx.user.findUnique({
+        where: { email: invitation.email },
+      });
 
       if (!user) {
         // We could create the user here, or require them to register first.
         // Let's create a placeholder user that requires password change
         const randomPassword = crypto.randomBytes(12).toString('base64url');
         user = await this.usersService.createUser(
-          { email: invitation.email, firstName: 'Invited', lastName: 'User', isActive: true, roleIds: [] } as any,
-          invitation.invitedById || 'system'
+          {
+            email: invitation.email,
+            firstName: 'Invited',
+            lastName: 'User',
+            isActive: true,
+            roleIds: [],
+          } as any,
+          invitation.invitedById || 'system',
         );
       }
 
@@ -89,7 +121,10 @@ export class TenantMembersService {
       // Delete invitation
       await tx.tenantInvitation.delete({ where: { id: invitation.id } });
 
-      return { message: 'Joined workspace successfully', tenantId: invitation.tenantId };
+      return {
+        message: 'Joined workspace successfully',
+        tenantId: invitation.tenantId,
+      };
     });
   }
 
@@ -97,7 +132,16 @@ export class TenantMembersService {
     return this.prisma.tenantMembership.findMany({
       where: { tenantId },
       include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, roles: { where: { tenantId }, select: { name: true } } } },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            roles: { where: { tenantId }, select: { name: true } },
+          },
+        },
       },
     });
   }
@@ -116,17 +160,20 @@ export class TenantMembersService {
     }
 
     if (dto.roleId) {
-       await this.prisma.user.update({
-         where: { id: userId },
-         data: { roles: { connect: { id: dto.roleId } } },
-       });
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { roles: { connect: { id: dto.roleId } } },
+      });
     }
 
     return { message: 'Member updated successfully' };
   }
 
   async removeMember(tenantId: string, userId: string, currentUserId: string) {
-    if (userId === currentUserId) throw new BadRequestException('You cannot remove yourself. Leave the workspace instead.');
+    if (userId === currentUserId)
+      throw new BadRequestException(
+        'You cannot remove yourself. Leave the workspace instead.',
+      );
 
     const membership = await this.prisma.tenantMembership.findUnique({
       where: { tenantId_userId: { tenantId, userId } },
@@ -135,11 +182,14 @@ export class TenantMembersService {
     if (!membership) throw new NotFoundException('Member not found');
 
     if (membership.isOwner) {
-       // Check if there are other owners
-       const ownerCount = await this.prisma.tenantMembership.count({
-          where: { tenantId, isOwner: true }
-       });
-       if (ownerCount <= 1) throw new BadRequestException('Cannot remove the last owner of the workspace');
+      // Check if there are other owners
+      const ownerCount = await this.prisma.tenantMembership.count({
+        where: { tenantId, isOwner: true },
+      });
+      if (ownerCount <= 1)
+        throw new BadRequestException(
+          'Cannot remove the last owner of the workspace',
+        );
     }
 
     await this.prisma.tenantMembership.delete({

@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequestUser } from '../interfaces/request-user.interface';
 
@@ -9,7 +14,7 @@ export class TenantOwnerGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user as RequestUser;
-    
+
     // Super admins can access any tenant as an owner
     if (user?.isSuperAdmin) {
       return true;
@@ -26,8 +31,8 @@ export class TenantOwnerGuard implements CanActivate {
         tenantId_userId: {
           tenantId: user.tenantId,
           userId: user.userId || (user as any).id, // Support different object shapes
-        }
-      }
+        },
+      },
     });
 
     if (!membership?.isOwner) {

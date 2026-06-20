@@ -24,11 +24,13 @@ describe('AuthService', () => {
     mustChangePassword: true,
     passwordHash: '',
     roles: [],
-    tenantMemberships: [{
-      tenantId: 'tenant-1',
-      isOwner: true,
-      tenant: { name: 'Test Workspace', slug: 'test-workspace' }
-    }],
+    tenantMemberships: [
+      {
+        tenantId: 'tenant-1',
+        isOwner: true,
+        tenant: { name: 'Test Workspace', slug: 'test-workspace' },
+      },
+    ],
   };
 
   const authPayloadUser = {
@@ -54,11 +56,13 @@ describe('AuthService', () => {
         ],
       },
     ],
-    tenantMemberships: [{
-      tenantId: 'tenant-1',
-      isOwner: true,
-      tenant: { name: 'Test Workspace', slug: 'test-workspace' }
-    }],
+    tenantMemberships: [
+      {
+        tenantId: 'tenant-1',
+        isOwner: true,
+        tenant: { name: 'Test Workspace', slug: 'test-workspace' },
+      },
+    ],
   };
 
   beforeEach(() => {
@@ -183,7 +187,7 @@ describe('AuthService', () => {
     expect(prisma.passwordResetToken.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: activeTempUser.id,
-        
+
         tokenHash: expect.any(String),
         expiresAt: expect.any(Date),
       }),
@@ -359,7 +363,7 @@ describe('AuthService', () => {
     expect(prisma.emailVerificationToken.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: 'user-1',
-        
+
         email: 'new.user@example.com',
         tokenHash: expect.any(String),
         expiresAt: expect.any(Date),
@@ -443,7 +447,6 @@ describe('AuthService', () => {
     prisma.mfaConfig.findUnique.mockResolvedValue(null);
     prisma.userSession.create.mockResolvedValue({
       id: 'session-1',
-      
     });
     prisma.user.findUnique.mockResolvedValue(authPayloadUser);
 
@@ -464,7 +467,7 @@ describe('AuthService', () => {
     expect(prisma.userSession.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: user.id,
-        
+
         ipAddress: '127.0.0.1',
         deviceType: 'desktop',
         platform: 'Windows',
@@ -474,7 +477,7 @@ describe('AuthService', () => {
       data: expect.objectContaining({
         sessionId: 'session-1',
         userId: user.id,
-        
+
         tokenHash: expect.any(String),
       }),
     });

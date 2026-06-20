@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
@@ -8,15 +13,19 @@ export class TenantsService {
   constructor(private prisma: PrismaService) {}
 
   private generateSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '') + '-' + Math.random().toString(36).substring(2, 6);
+    return (
+      name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '') +
+      '-' +
+      Math.random().toString(36).substring(2, 6)
+    );
   }
 
   async create(userId: string, dto: CreateTenantDto) {
     const slug = dto.slug || this.generateSlug(dto.name);
-    
+
     // Check if slug exists
     const existing = await this.prisma.tenant.findUnique({ where: { slug } });
     if (existing) {
@@ -67,9 +76,9 @@ export class TenantsService {
       include: {
         memberships: {
           where: { userId },
-          select: { isOwner: true }
-        }
-      }
+          select: { isOwner: true },
+        },
+      },
     });
   }
 
@@ -86,7 +95,7 @@ export class TenantsService {
 
     if (dto.slug) {
       const existing = await this.prisma.tenant.findFirst({
-        where: { slug: dto.slug, id: { not: id } }
+        where: { slug: dto.slug, id: { not: id } },
       });
       if (existing) throw new ConflictException('Workspace slug already taken');
     }

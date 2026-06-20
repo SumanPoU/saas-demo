@@ -54,10 +54,10 @@ export class UsersController {
           id: 'user-id',
           email: 'newuser@example.com',
           username: 'newuser',
-          isActive: true
-        }
-      }
-    }
+          isActive: true,
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -83,16 +83,26 @@ export class UsersController {
         message: 'Users retrieved successfully',
         data: {
           items: [
-            { id: 'user-1', email: 'user1@example.com', username: 'user1', isActive: true },
-            { id: 'user-2', email: 'user2@example.com', username: 'user2', isActive: true }
+            {
+              id: 'user-1',
+              email: 'user1@example.com',
+              username: 'user1',
+              isActive: true,
+            },
+            {
+              id: 'user-2',
+              email: 'user2@example.com',
+              username: 'user2',
+              isActive: true,
+            },
           ],
           total: 2,
           page: 1,
           limit: 10,
-          totalPages: 1
-        }
-      }
-    }
+          totalPages: 1,
+        },
+      },
+    },
   })
   async getUsers(@Query() query: PaginationQueryDto, @CurrentUser() user: any) {
     return this.usersService.getUsers(query, user);
@@ -116,10 +126,10 @@ export class UsersController {
           email: 'user@example.com',
           username: 'user',
           isActive: true,
-          roles: []
-        }
-      }
-    }
+          roles: [],
+        },
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'User not found' })
   async getUserById(@Param('id') id: string, @CurrentUser() user: any) {
@@ -145,13 +155,17 @@ export class UsersController {
           username: 'user',
           firstName: 'John',
           lastName: 'Doe',
-          isActive: true
-        }
-      }
-    }
+          isActive: true,
+        },
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: any) {
+  async updateUser(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser() user: any,
+  ) {
     return this.usersService.updateUser(id, dto, user);
   }
 
@@ -178,10 +192,10 @@ export class UsersController {
           id: 'user-id',
           email: 'user@example.com',
           username: 'user',
-          isActive: true
-        }
-      }
-    }
+          isActive: true,
+        },
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'User not found' })
   async resetUserPassword(@Param('id') id: string, @CurrentUser() user: any) {
@@ -210,10 +224,10 @@ export class UsersController {
           id: 'user-id',
           email: 'user@example.com',
           username: 'user',
-          isActive: false
-        }
-      }
-    }
+          isActive: false,
+        },
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Cannot delete your own account' })
   @ApiResponse({ status: 404, description: 'User not found' })

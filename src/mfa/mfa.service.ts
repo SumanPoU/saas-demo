@@ -179,7 +179,6 @@ export class MfaService {
     // Log in AuditLog
     await this.prisma.auditLog.create({
       data: {
-        
         actorId: userId,
         action: 'mfa_enabled',
         entityType: 'user',
@@ -243,7 +242,6 @@ export class MfaService {
     // Log Audit Log
     await this.prisma.auditLog.create({
       data: {
-        
         actorId: userId,
         action: 'mfa_backup_codes_regenerated',
         entityType: 'user',
@@ -375,9 +373,13 @@ export class MfaService {
       throw new UnauthorizedException('User account not found');
     }
 
-    const defaultMembership = user.tenantMemberships?.find((m: any) => m.isOwner) || user.tenantMemberships?.[0];
+    const defaultMembership =
+      user.tenantMemberships?.find((m: any) => m.isOwner) ||
+      user.tenantMemberships?.[0];
     if (!defaultMembership) {
-      throw new UnauthorizedException('User does not belong to any workspace. Contact support.');
+      throw new UnauthorizedException(
+        'User does not belong to any workspace. Contact support.',
+      );
     }
     const tenantId = defaultMembership.tenantId;
 
@@ -391,7 +393,6 @@ export class MfaService {
     // Audit log
     await this.prisma.auditLog.create({
       data: {
-        
         actorId: userId,
         action: 'mfa_verified',
         entityType: 'user',
@@ -443,7 +444,6 @@ export class MfaService {
     // Write to audit log
     await this.prisma.auditLog.create({
       data: {
-        
         actorId: deviceToken.userId,
         action: 'new_device_authorized',
         entityType: 'user',
@@ -504,7 +504,6 @@ export class MfaService {
     // Audit Log
     await this.prisma.auditLog.create({
       data: {
-        
         actorId: userId,
         action: 'mfa_disabled',
         entityType: 'user',
@@ -546,7 +545,7 @@ export class MfaService {
     await this.prisma.mfaRecoveryToken.create({
       data: {
         userId: user.id,
-        
+
         tokenHash,
         expiresAt,
       },
@@ -642,7 +641,6 @@ export class MfaService {
     // Write to audit log
     await this.prisma.auditLog.create({
       data: {
-        
         actorId: userId,
         action: 'mfa_recovery_used',
         entityType: 'user',

@@ -1,5 +1,18 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { CreatePlanDto, UpdatePlanDto, SubscribeDto } from './dto/billing.dto';
 import { SuperAdminGuard } from '../auth/guards/super-admin.guard';
@@ -29,10 +42,10 @@ export class BillingController {
           name: 'Pro',
           price: 29.99,
           currency: 'USD',
-          interval: 'MONTHLY'
-        }
-      }
-    }
+          interval: 'MONTHLY',
+        },
+      },
+    },
   })
   createPlan(@Body() dto: CreatePlanDto) {
     return this.billingService.createPlan(dto);
@@ -53,11 +66,11 @@ export class BillingController {
             name: 'Pro',
             price: 29.99,
             currency: 'USD',
-            interval: 'MONTHLY'
-          }
-        ]
-      }
-    }
+            interval: 'MONTHLY',
+          },
+        ],
+      },
+    },
   })
   getPlans() {
     return this.billingService.getPlans();
@@ -76,10 +89,10 @@ export class BillingController {
         data: {
           id: 'plan-id',
           name: 'Pro Updated',
-          price: 39.99
-        }
-      }
-    }
+          price: 39.99,
+        },
+      },
+    },
   })
   updatePlan(@Param('id') id: string, @Body() dto: UpdatePlanDto) {
     return this.billingService.updatePlan(id, dto);
@@ -100,10 +113,10 @@ export class BillingController {
           id: 'sub-id',
           tenantId: 'tenant-id',
           planId: 'plan-id',
-          status: 'ACTIVE'
-        }
-      }
-    }
+          status: 'ACTIVE',
+        },
+      },
+    },
   })
   subscribe(@Param('tenantId') tenantId: string, @Body() dto: SubscribeDto) {
     return this.billingService.subscribe(tenantId, dto);
@@ -123,10 +136,10 @@ export class BillingController {
           id: 'sub-id',
           planId: 'plan-id',
           status: 'ACTIVE',
-          currentPeriodEnd: '2026-07-16T00:00:00Z'
-        }
-      }
-    }
+          currentPeriodEnd: '2026-07-16T00:00:00Z',
+        },
+      },
+    },
   })
   getSubscription(@Param('tenantId') tenantId: string) {
     return this.billingService.getSubscription(tenantId);
@@ -144,10 +157,10 @@ export class BillingController {
         message: 'Subscription cancelled successfully',
         data: {
           id: 'sub-id',
-          status: 'CANCELED'
-        }
-      }
-    }
+          status: 'CANCELED',
+        },
+      },
+    },
   })
   cancelSubscription(@Param('tenantId') tenantId: string) {
     return this.billingService.cancelSubscription(tenantId);
@@ -169,11 +182,11 @@ export class BillingController {
             id: 'invoice-id',
             amount: 29.99,
             status: 'PAID',
-            issuedAt: '2026-06-16T00:00:00Z'
-          }
-        ]
-      }
-    }
+            issuedAt: '2026-06-16T00:00:00Z',
+          },
+        ],
+      },
+    },
   })
   getInvoices(@Param('tenantId') tenantId: string) {
     return this.billingService.getInvoices(tenantId);
@@ -193,10 +206,10 @@ export class BillingController {
           id: 'invoice-id',
           amount: 29.99,
           status: 'PAID',
-          issuedAt: '2026-06-16T00:00:00Z'
-        }
-      }
-    }
+          issuedAt: '2026-06-16T00:00:00Z',
+        },
+      },
+    },
   })
   getInvoiceById(@Param('tenantId') tenantId: string, @Param('id') id: string) {
     return this.billingService.getInvoiceById(tenantId, id);

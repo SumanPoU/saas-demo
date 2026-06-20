@@ -30,10 +30,9 @@ describe('PermissionsController', () => {
     await expect(
       controller.createPermission(dto as any, { id: 'admin-1' }),
     ).resolves.toBe(result);
-    expect(permissionsService.createPermission).toHaveBeenCalledWith(
-      dto,
-      { id: 'admin-1' },
-    );
+    expect(permissionsService.createPermission).toHaveBeenCalledWith(dto, {
+      id: 'admin-1',
+    });
   });
 
   it('delegates permission group creation with actor id', async () => {
@@ -44,10 +43,9 @@ describe('PermissionsController', () => {
     await expect(
       controller.createPermissionGroup(dto as any, { id: 'admin-1' }),
     ).resolves.toBe(result);
-    expect(permissionsService.createPermissionGroup).toHaveBeenCalledWith(
-      dto,
-      { id: 'admin-1' },
-    );
+    expect(permissionsService.createPermissionGroup).toHaveBeenCalledWith(dto, {
+      id: 'admin-1',
+    });
   });
 
   it('delegates permission-group assignment body ids', async () => {

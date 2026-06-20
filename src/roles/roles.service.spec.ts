@@ -82,7 +82,10 @@ describe('RolesService', () => {
     });
 
     await expect(
-      service.createRole({ name: 'Member', isDefault: true }, { id: 'admin-1', isSuperAdmin: true, tenantId: null }),
+      service.createRole(
+        { name: 'Member', isDefault: true },
+        { id: 'admin-1', isSuperAdmin: true, tenantId: null },
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.role.create).not.toHaveBeenCalled();
@@ -92,9 +95,9 @@ describe('RolesService', () => {
     prisma.role.findFirst.mockResolvedValue(role);
     prisma.user.count.mockResolvedValue(3);
 
-    await expect(service.deleteRole('role-1', { id: 'admin-1' })).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.deleteRole('role-1', { id: 'admin-1' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.role.delete).not.toHaveBeenCalled();
   });
@@ -148,7 +151,11 @@ describe('RolesService', () => {
     prisma.permission.findMany.mockResolvedValue([{ id: 'permission-1' }]);
 
     await expect(
-      service.assignPermissionsToRole('role-1', ['permission-1', 'missing'], 'admin-1'),
+      service.assignPermissionsToRole(
+        'role-1',
+        ['permission-1', 'missing'],
+        'admin-1',
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.rolePermission.upsert).not.toHaveBeenCalled();
@@ -165,8 +172,8 @@ describe('RolesService', () => {
   it('throws NotFoundException for missing roles', async () => {
     prisma.role.findFirst.mockResolvedValue(null);
 
-    await expect(service.getRoleById('missing-role', { id: 'admin-1' })).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.getRoleById('missing-role', { id: 'admin-1' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

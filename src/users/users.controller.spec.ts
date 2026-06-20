@@ -24,7 +24,9 @@ describe('UsersController', () => {
     await expect(
       controller.createUser(dto as any, { id: 'admin-1' }),
     ).resolves.toBe(created);
-    expect(usersService.createUser).toHaveBeenCalledWith(dto, { id: 'admin-1' });
+    expect(usersService.createUser).toHaveBeenCalledWith(dto, {
+      id: 'admin-1',
+    });
   });
 
   it('delegates admin password reset with the current actor id', async () => {
@@ -34,10 +36,9 @@ describe('UsersController', () => {
     await expect(
       controller.resetUserPassword('user-1', { id: 'admin-1' }),
     ).resolves.toBe(updated);
-    expect(usersService.resetUserPassword).toHaveBeenCalledWith(
-      'user-1',
-      { id: 'admin-1' },
-    );
+    expect(usersService.resetUserPassword).toHaveBeenCalledWith('user-1', {
+      id: 'admin-1',
+    });
   });
 
   it('delegates soft delete with the current actor id', async () => {
@@ -47,6 +48,8 @@ describe('UsersController', () => {
     await expect(
       controller.deleteUser('user-1', { id: 'admin-1' }),
     ).resolves.toBe(deleted);
-    expect(usersService.deleteUser).toHaveBeenCalledWith('user-1', { id: 'admin-1' });
+    expect(usersService.deleteUser).toHaveBeenCalledWith('user-1', {
+      id: 'admin-1',
+    });
   });
 });

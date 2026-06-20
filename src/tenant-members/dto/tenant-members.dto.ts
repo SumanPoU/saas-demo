@@ -6,7 +6,9 @@ export class InviteMemberDto {
   @IsEmail()
   email: string;
 
-  @ApiPropertyOptional({ description: 'Role ID to assign to the user upon joining' })
+  @ApiPropertyOptional({
+    description: 'Role ID to assign to the user upon joining',
+  })
   @IsOptional()
   @IsString()
   roleId?: string;

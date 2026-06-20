@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  ForbiddenException,
+} from '@nestjs/common';
 import { RequestUser } from '../interfaces/request-user.interface';
 
 @Injectable()
@@ -6,7 +11,7 @@ export class TenantMemberGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const user = request.user as RequestUser;
-    
+
     // Super admins can access any tenant
     if (user?.isSuperAdmin) {
       return true;

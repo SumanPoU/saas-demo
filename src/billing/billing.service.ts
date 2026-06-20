@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePlanDto, UpdatePlanDto, SubscribeDto } from './dto/billing.dto';
 
@@ -8,34 +12,39 @@ export class BillingService {
 
   // --- Plans ---
   async createPlan(dto: CreatePlanDto) {
-    return this.prisma.tenantPlan.create({ 
+    return this.prisma.tenantPlan.create({
       data: {
         name: dto.name,
         priceMonthly: dto.price,
         isPublic: true,
-      } 
+      },
     });
   }
 
   async getPlans() {
-    return this.prisma.tenantPlan.findMany({ where: { isPublic: true }, orderBy: { priceMonthly: 'asc' } });
+    return this.prisma.tenantPlan.findMany({
+      where: { isPublic: true },
+      orderBy: { priceMonthly: 'asc' },
+    });
   }
 
   async updatePlan(id: string, dto: UpdatePlanDto) {
     const plan = await this.prisma.tenantPlan.findUnique({ where: { id } });
     if (!plan) throw new NotFoundException('Plan not found');
-    return this.prisma.tenantPlan.update({ 
-      where: { id }, 
+    return this.prisma.tenantPlan.update({
+      where: { id },
       data: {
         name: dto.name,
         isPublic: dto.isActive,
-      } 
+      },
     });
   }
 
   // --- Subscriptions ---
   async subscribe(tenantId: string, dto: SubscribeDto) {
-    const plan = await this.prisma.tenantPlan.findUnique({ where: { id: dto.planId } });
+    const plan = await this.prisma.tenantPlan.findUnique({
+      where: { id: dto.planId },
+    });
     if (!plan) throw new NotFoundException('Plan not found');
 
     // Soft logic: cancel existing active subscription
@@ -81,7 +90,7 @@ export class BillingService {
 
   async cancelSubscription(tenantId: string) {
     const sub = await this.getSubscription(tenantId);
-    
+
     await this.prisma.subscription.update({
       where: { id: sub.id },
       data: { status: 'CANCELED', canceledAt: new Date() },

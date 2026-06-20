@@ -53,10 +53,10 @@ export class RolesController {
           id: 'role-id',
           name: 'Manager',
           description: 'Team Manager',
-          isDefault: false
-        }
-      }
-    }
+          isDefault: false,
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -88,11 +88,11 @@ export class RolesController {
             name: 'Admin',
             description: 'Administrator role',
             isDefault: false,
-            permissions: ['users:read', 'users:write']
-          }
-        ]
-      }
-    }
+            permissions: ['users:read', 'users:write'],
+          },
+        ],
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAllRoles(@CurrentUser() user: any) {
@@ -117,15 +117,18 @@ export class RolesController {
             id: 'role-id',
             name: 'User',
             description: 'Standard User',
-            permissions: ['dashboard:read']
-          }
-        ]
-      }
-    }
+            permissions: ['dashboard:read'],
+          },
+        ],
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUserRoles(@Param('userId') userId: string, @CurrentUser() user: any) {
+  async getUserRoles(
+    @Param('userId') userId: string,
+    @CurrentUser() user: any,
+  ) {
     return this.rolesService.getUserRoles(userId, user);
   }
 
@@ -147,10 +150,10 @@ export class RolesController {
           name: 'Admin',
           description: 'Administrator role',
           isDefault: false,
-          permissions: ['users:read', 'users:write']
-        }
-      }
-    }
+          permissions: ['users:read', 'users:write'],
+        },
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'Role not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -175,15 +178,19 @@ export class RolesController {
           id: 'role-id',
           name: 'Super Admin',
           description: 'Super Administrator',
-          isDefault: false
-        }
-      }
-    }
+          isDefault: false,
+        },
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Role name already taken' })
   @ApiResponse({ status: 404, description: 'Role not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto, @CurrentUser() user: any) {
+  async updateRole(
+    @Param('id') id: string,
+    @Body() dto: UpdateRoleDto,
+    @CurrentUser() user: any,
+  ) {
     return this.rolesService.updateRole(id, dto, user);
   }
 
@@ -217,9 +224,9 @@ export class RolesController {
       example: {
         statusCode: 200,
         message: 'Permissions successfully assigned to role',
-        data: { count: 2 }
-      }
-    }
+        data: { count: 2 },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -274,9 +281,9 @@ export class RolesController {
       example: {
         statusCode: 200,
         message: 'Role successfully assigned to user(s)',
-        data: { count: 1 }
-      }
-    }
+        data: { count: 1 },
+      },
+    },
   })
   @ApiResponse({
     status: 400,

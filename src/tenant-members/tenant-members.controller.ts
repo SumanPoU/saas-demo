@@ -1,7 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { TenantMembersService } from './tenant-members.service';
-import { InviteMemberDto, AcceptInvitationDto, UpdateMemberDto } from './dto/tenant-members.dto';
+import {
+  InviteMemberDto,
+  AcceptInvitationDto,
+  UpdateMemberDto,
+} from './dto/tenant-members.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequestUser } from '../auth/interfaces/request-user.interface';
 import { TenantMemberGuard } from '../auth/guards/tenant-member.guard';
@@ -15,7 +33,9 @@ export class TenantMembersController {
   @Post('tenants/:tenantId/members/invite')
   @ApiBearerAuth('JWT')
   @UseGuards(TenantOwnerGuard)
-  @ApiOperation({ summary: 'Invite a new member to the workspace (Owner only)' })
+  @ApiOperation({
+    summary: 'Invite a new member to the workspace (Owner only)',
+  })
   @ApiResponse({
     status: 201,
     description: 'Member invited successfully',
@@ -27,17 +47,21 @@ export class TenantMembersController {
           id: 'invite-id',
           email: 'newmember@example.com',
           roleId: 'role-id',
-          expiresAt: '2026-06-23T00:00:00Z'
-        }
-      }
-    }
+          expiresAt: '2026-06-23T00:00:00Z',
+        },
+      },
+    },
   })
   inviteMember(
     @Param('tenantId') tenantId: string,
     @Body() dto: InviteMemberDto,
     @CurrentUser() user: any,
   ) {
-    return this.membersService.inviteMember(tenantId, dto, user.userId || (user as any).id);
+    return this.membersService.inviteMember(
+      tenantId,
+      dto,
+      user.userId || (user as any).id,
+    );
   }
 
   @Post('auth/invitations/accept')
@@ -52,10 +76,10 @@ export class TenantMembersController {
         data: {
           tenantId: 'tenant-id',
           userId: 'user-id',
-          isOwner: false
-        }
-      }
-    }
+          isOwner: false,
+        },
+      },
+    },
   })
   acceptInvitation(@Body() dto: AcceptInvitationDto) {
     return this.membersService.acceptInvitation(dto);
@@ -79,12 +103,12 @@ export class TenantMembersController {
             isOwner: true,
             user: {
               email: 'owner@example.com',
-              username: 'owner'
-            }
-          }
-        ]
-      }
-    }
+              username: 'owner',
+            },
+          },
+        ],
+      },
+    },
   })
   getMembers(@Param('tenantId') tenantId: string) {
     return this.membersService.getMembers(tenantId);
@@ -93,7 +117,9 @@ export class TenantMembersController {
   @Patch('tenants/:tenantId/members/:userId')
   @ApiBearerAuth('JWT')
   @UseGuards(TenantOwnerGuard)
-  @ApiOperation({ summary: 'Update a member role or owner status (Owner only)' })
+  @ApiOperation({
+    summary: 'Update a member role or owner status (Owner only)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Member updated successfully',
@@ -105,10 +131,10 @@ export class TenantMembersController {
           userId: 'user-id',
           tenantId: 'tenant-id',
           isOwner: false,
-          roleId: 'new-role-id'
-        }
-      }
-    }
+          roleId: 'new-role-id',
+        },
+      },
+    },
   })
   updateMember(
     @Param('tenantId') tenantId: string,
@@ -129,15 +155,19 @@ export class TenantMembersController {
       example: {
         statusCode: 200,
         message: 'Member removed successfully',
-        data: null
-      }
-    }
+        data: null,
+      },
+    },
   })
   removeMember(
     @Param('tenantId') tenantId: string,
     @Param('userId') userId: string,
     @CurrentUser() user: any,
   ) {
-    return this.membersService.removeMember(tenantId, userId, user.userId || (user as any).id);
+    return this.membersService.removeMember(
+      tenantId,
+      userId,
+      user.userId || (user as any).id,
+    );
   }
 }

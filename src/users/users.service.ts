@@ -115,7 +115,6 @@ export class UsersService {
 
     await this.prisma.auditLog.create({
       data: {
-        
         actorId,
         action: 'USER_CREATE',
         entityType: 'User',
@@ -154,7 +153,7 @@ export class UsersService {
 
   async getUserById(id: string, requestUser: any) {
     const where: Prisma.UserWhereInput = { id };
-    
+
     if (!requestUser.isSuperAdmin && requestUser.tenantId) {
       where.tenantMemberships = {
         some: { tenantId: requestUser.tenantId },
@@ -167,7 +166,9 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException(`User with ID "${id}" not found in your workspace`);
+      throw new NotFoundException(
+        `User with ID "${id}" not found in your workspace`,
+      );
     }
 
     return user;
@@ -217,7 +218,6 @@ export class UsersService {
 
     await this.prisma.auditLog.create({
       data: {
-        
         actorId,
         action: 'USER_PASSWORD_RESET_BY_ADMIN',
         entityType: 'User',
@@ -255,7 +255,6 @@ export class UsersService {
 
     await this.prisma.auditLog.create({
       data: {
-        
         actorId,
         action: 'USER_DELETE',
         entityType: 'User',
