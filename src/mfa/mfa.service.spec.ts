@@ -77,6 +77,7 @@ describe('MfaService', () => {
     };
     mailService = {
       sendEmail: jest.fn(),
+      sendMfaRecoveryEmail: jest.fn(),
     };
     runtimeConfig = {
       getBcryptSaltRounds: jest.fn().mockResolvedValue(10),
@@ -285,6 +286,6 @@ describe('MfaService', () => {
     });
 
     expect(prisma.mfaRecoveryToken.create).not.toHaveBeenCalled();
-    expect(mailService.sendEmail).not.toHaveBeenCalled();
+    expect(mailService.sendMfaRecoveryEmail).not.toHaveBeenCalled();
   });
 });

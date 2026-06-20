@@ -555,24 +555,7 @@ export class MfaService {
     const frontendUrl = await this.runtimeConfig.getString('FRONTEND_URL');
     const recoveryLink = `${frontendUrl}/auth/recover-mfa?token=${rawToken}`;
 
-    // Style template
-    const subject = 'Disable Multi-Factor Authentication Recovery Link';
-    const text = `Please use this link to recover your account and disable MFA: ${recoveryLink}`;
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #eef2f6; border-radius: 10px;">
-        <h2 style="color: #ef4444;">MFA Account Recovery Request</h2>
-        <p>Hello,</p>
-        <p>A request was made to disable Multi-Factor Authentication (MFA) on your account. To complete this action, please click the button below:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${recoveryLink}" style="background-color: #ef4444; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold;">Disable MFA on Account</a>
-        </div>
-        <p style="color: #64748b; font-size: 14px;">This link is valid for <strong>1 hour</strong>. If you did not request this recovery action, please ignore this email and secure your account credentials immediately.</p>
-        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;">
-        <p style="font-size: 11px; color: #94a3b8; text-align: center;">&copy; SaaS Demo. All rights reserved.</p>
-      </div>
-    `;
-
-    await this.mailService.sendEmail(user.email, subject, text, html);
+    await this.mailService.sendMfaRecoveryEmail(user.email, recoveryLink);
 
     this.logger.debug(
       `MFA recovery link generated and emailed for userId=${user.id}`,
