@@ -39,7 +39,7 @@ describe('AuthMiddleware', () => {
     });
     prisma.userSession.findUnique.mockResolvedValue({
       id: 'session-1',
-      tenantId: 'default',
+      
       isRevoked: false,
       expiresAt: new Date(Date.now() + 60_000),
     });
@@ -73,7 +73,7 @@ describe('AuthMiddleware', () => {
       roles: ['Admin'],
       permissions: ['users:read', 'users:create'],
       sessionId: 'session-1',
-      tenantId: 'default',
+      
     });
     expect(req.raw.user).toBe(req.user);
     expect(next).toHaveBeenCalledTimes(1);

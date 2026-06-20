@@ -44,8 +44,22 @@ export class PermissionsController {
   @Permissions('permissions:create')
   @HttpCode(HttpStatus.CREATED)
   @ResponseMessage('Permission successfully created')
-  @ApiOperation({ summary: 'Create a new permission' })
-  @ApiResponse({ status: 201, description: 'Permission successfully created' })
+  @ApiOperation({ summary: 'Create a new individual permission' })
+  @ApiResponse({
+    status: 201,
+    description: 'Permission successfully created',
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'Permission successfully created',
+        data: {
+          id: 'perm-id',
+          action: 'users:read',
+          description: 'Read users'
+        }
+      }
+    }
+  })
   @ApiResponse({
     status: 400,
     description: 'Permission with that name already exists',
@@ -55,7 +69,7 @@ export class PermissionsController {
     @Body() dto: CreatePermissionDto,
     @CurrentUser() user: any,
   ) {
-    return this.permissionsService.createPermission(dto, user.id);
+    return this.permissionsService.createPermission(dto, user);
   }
 
   @Get()
@@ -64,15 +78,30 @@ export class PermissionsController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Permissions retrieved successfully')
   @ApiOperation({
-    summary: 'Retrieve all permissions with their groups and roles (Paginated)',
+    summary: 'Retrieve all permissions with pagination and search',
   })
   @ApiResponse({
     status: 200,
-    description: 'Paginated list of permissions returned',
+    description: 'List of all permissions returned',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Permissions retrieved successfully',
+        data: {
+          items: [
+            { id: 'perm-id', action: 'users:read', description: 'Read users' }
+          ],
+          total: 1,
+          page: 1,
+          limit: 10,
+          totalPages: 1
+        }
+      }
+    }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getAllPermissions(@Query() query: PaginationQueryDto) {
-    return this.permissionsService.getAllPermissions(query);
+  async getAllPermissions(@Query() query: PaginationQueryDto, @CurrentUser() user: any) {
+    return this.permissionsService.getAllPermissions(query, user);
   }
 
   /**
@@ -88,6 +117,17 @@ export class PermissionsController {
   @ApiResponse({
     status: 201,
     description: 'Permission group successfully created',
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'Permission group successfully created',
+        data: {
+          id: 'group-id',
+          name: 'User Management',
+          description: 'Manage users'
+        }
+      }
+    }
   })
   @ApiResponse({
     status: 400,
@@ -98,7 +138,7 @@ export class PermissionsController {
     @Body() dto: CreatePermissionGroupDto,
     @CurrentUser() user: any,
   ) {
-    return this.permissionsService.createPermissionGroup(dto, user.id);
+    return this.permissionsService.createPermissionGroup(dto, user);
   }
 
   @Get('groups')
@@ -112,10 +152,24 @@ export class PermissionsController {
   @ApiResponse({
     status: 200,
     description: 'List of all permission groups returned',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Permission groups retrieved successfully',
+        data: [
+          {
+            id: 'group-id',
+            name: 'User Management',
+            description: 'Manage users',
+            permissions: [{ id: 'perm-id', action: 'users:read', description: 'Read users' }]
+          }
+        ]
+      }
+    }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getAllPermissionGroups() {
-    return this.permissionsService.getAllPermissionGroups();
+  async getAllPermissionGroups(@CurrentUser() user: any) {
+    return this.permissionsService.getAllPermissionGroups(user);
   }
 
   @Get('groups/:id')
@@ -127,11 +181,23 @@ export class PermissionsController {
   @ApiResponse({
     status: 200,
     description: 'Permission group details returned',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Permission group details retrieved successfully',
+        data: {
+          id: 'group-id',
+          name: 'User Management',
+          description: 'Manage users',
+          permissions: [{ id: 'perm-id', action: 'users:read', description: 'Read users' }]
+        }
+      }
+    }
   })
   @ApiResponse({ status: 404, description: 'Permission group not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getPermissionGroupById(@Param('id') id: string) {
-    return this.permissionsService.getPermissionGroupById(id);
+  async getPermissionGroupById(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.permissionsService.getPermissionGroupById(id, user);
   }
 
   @Patch('groups/:id')
@@ -143,6 +209,17 @@ export class PermissionsController {
   @ApiResponse({
     status: 200,
     description: 'Permission group successfully updated',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Permission group successfully updated',
+        data: {
+          id: 'group-id',
+          name: 'User Management',
+          description: 'Manage users updated'
+        }
+      }
+    }
   })
   @ApiResponse({
     status: 400,
@@ -179,11 +256,25 @@ export class PermissionsController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Permission details retrieved successfully')
   @ApiOperation({ summary: 'Retrieve a single permission by ID' })
-  @ApiResponse({ status: 200, description: 'Permission details returned' })
+  @ApiResponse({
+    status: 200,
+    description: 'Permission details returned',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Permission details retrieved successfully',
+        data: {
+          id: 'perm-id',
+          action: 'users:read',
+          description: 'Read users'
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 404, description: 'Permission not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getPermissionById(@Param('id') id: string) {
-    return this.permissionsService.getPermissionById(id);
+  async getPermissionById(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.permissionsService.getPermissionById(id, user);
   }
 
   @Patch(':id')
@@ -192,7 +283,21 @@ export class PermissionsController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Permission successfully updated')
   @ApiOperation({ summary: 'Update a permission name or description' })
-  @ApiResponse({ status: 200, description: 'Permission successfully updated' })
+  @ApiResponse({
+    status: 200,
+    description: 'Permission successfully updated',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Permission successfully updated',
+        data: {
+          id: 'perm-id',
+          action: 'users:read',
+          description: 'Read users updated'
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 400, description: 'Permission name already taken' })
   @ApiResponse({ status: 404, description: 'Permission not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -231,6 +336,13 @@ export class PermissionsController {
   @ApiResponse({
     status: 200,
     description: 'Permission successfully assigned to group(s)',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Permission successfully assigned to group(s)',
+        data: { count: 1 }
+      }
+    }
   })
   @ApiResponse({
     status: 400,

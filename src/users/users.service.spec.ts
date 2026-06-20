@@ -144,11 +144,11 @@ describe('UsersService', () => {
   });
 
   it('resets a user password, revokes active sessions, and emails the temporary password', async () => {
-    prisma.user.findUnique
+    prisma.user.findFirst
       .mockResolvedValueOnce(safeUser)
       .mockResolvedValueOnce({ ...safeUser, mustChangePassword: true });
 
-    const result = await service.resetUserPassword('user-1', 'admin-1');
+    const result = await service.resetUserPassword('user-1', { id: 'admin-1' });
 
     expect(result).toMatchObject({ id: 'user-1', mustChangePassword: true });
     expect(prisma.user.update).toHaveBeenCalledWith({
@@ -183,15 +183,15 @@ describe('UsersService', () => {
 
   it('soft-deletes users but refuses to delete the acting user', async () => {
     await expect(
-      service.deleteUser('admin-1', 'admin-1'),
+      service.deleteUser('admin-1', { id: 'admin-1' }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.user.update).not.toHaveBeenCalled();
 
-    prisma.user.findUnique.mockResolvedValue(safeUser);
+    prisma.user.findFirst.mockResolvedValue(safeUser);
     prisma.user.update.mockResolvedValue({ ...safeUser, isActive: false });
 
-    const result = await service.deleteUser('user-1', 'admin-1');
+    const result = await service.deleteUser('user-1', { id: 'admin-1' });
 
     expect(result.isActive).toBe(false);
     expect(prisma.user.update).toHaveBeenCalledWith({
@@ -209,10 +209,10 @@ describe('UsersService', () => {
   });
 
   it('throws NotFoundException when a user is not found', async () => {
-    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue(null);
 
-    await expect(service.getUserById('missing-user')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.deleteUser('user-1', { id: 'admin-1' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

@@ -90,7 +90,7 @@ function mergeMissingRuntimeConfigValues(
 
 async function seedGlobalConfigurations() {
   console.log('⚙️ Seeding global configurations...');
-  const legacyRuntimeConfig = await prisma.globalConfig.findUnique({
+  const legacyRuntimeConfig = await prisma.globalConfig.findFirst({
     where: { key: LEGACY_RUNTIME_CONFIG_KEY },
   });
   const legacyRuntimeSettings =
@@ -138,7 +138,7 @@ async function seedGlobalConfigurations() {
   }
 
   for (const key of RUNTIME_CONFIG_DOMAIN_KEYS) {
-    const current = await prisma.globalConfig.findUnique({ where: { key } });
+    const current = await prisma.globalConfig.findFirst({ where: { key } });
     await prisma.globalConfig.update({
       where: { key },
       data: {
@@ -164,37 +164,35 @@ async function main() {
 
   // 1. Create or Update Roles
   console.log('🔑 Seeding roles...');
-  const superAdminRole = await prisma.role.upsert({
-    where: { name: 'SuperAdmin' },
-    update: {},
-    create: {
-      name: 'SuperAdmin',
-      description:
-        'Super Administrator with full system access and permissions.',
-      isDefault: false,
-    },
-  });
+  const superAdminRole = await prisma.role.findFirst({ where: { name: 'SuperAdmin', tenantId: null } })
+    || await prisma.role.create({
+      data: {
+        name: 'SuperAdmin',
+        description: 'Super Administrator with full system access and permissions.',
+        isDefault: false,
+        tenantId: null,
+      },
+    });
 
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'Admin' },
-    update: {},
-    create: {
-      name: 'Admin',
-      description:
-        'Administrator with access to manage users and view audit trails.',
-      isDefault: false,
-    },
-  });
+  const adminRole = await prisma.role.findFirst({ where: { name: 'Admin', tenantId: null } })
+    || await prisma.role.create({
+      data: {
+        name: 'Admin',
+        description: 'Administrator with access to manage users and view audit trails.',
+        isDefault: false,
+        tenantId: null,
+      },
+    });
 
-  const userRole = await prisma.role.upsert({
-    where: { name: 'User' },
-    update: {},
-    create: {
-      name: 'User',
-      description: 'Standard system user with basic access privileges.',
-      isDefault: true,
-    },
-  });
+  const userRole = await prisma.role.findFirst({ where: { name: 'User', tenantId: null } })
+    || await prisma.role.create({
+      data: {
+        name: 'User',
+        description: 'Standard system user with basic access privileges.',
+        isDefault: true,
+        tenantId: null,
+      },
+    });
 
   console.log('Roles created/verified.');
 
@@ -289,27 +287,41 @@ async function main() {
   const allPermissions: { id: string; name: string }[] = [];
 
   for (const groupData of permGroups) {
-    const group = await prisma.permissionGroup.upsert({
-      where: { name: groupData.name },
-      update: { description: groupData.description },
-      create: {
-        name: groupData.name,
-        description: groupData.description,
-      },
-    });
-
-    for (const permData of groupData.permissions) {
-      const permission = await prisma.permission.upsert({
-        where: { name: permData.name },
-        update: { description: permData.description },
-        create: {
-          name: permData.name,
-          description: permData.description,
-          groups: {
-            connect: { id: group.id },
-          },
+    let group = await prisma.permissionGroup.findFirst({ where: { name: groupData.name, tenantId: null } });
+    if (!group) {
+      group = await prisma.permissionGroup.create({
+        data: {
+          name: groupData.name,
+          description: groupData.description,
+          tenantId: null,
         },
       });
+    } else {
+      group = await prisma.permissionGroup.update({
+        where: { id: group.id },
+        data: { description: groupData.description },
+      });
+    }
+
+    for (const permData of groupData.permissions) {
+      let permission = await prisma.permission.findFirst({ where: { name: permData.name, tenantId: null } });
+      if (!permission) {
+        permission = await prisma.permission.create({
+          data: {
+            name: permData.name,
+            description: permData.description,
+            tenantId: null,
+            groups: {
+              connect: { id: group.id },
+            },
+          },
+        });
+      } else {
+        permission = await prisma.permission.update({
+          where: { id: permission.id },
+          data: { description: permData.description },
+        });
+      }
       allPermissions.push(permission);
     }
   }

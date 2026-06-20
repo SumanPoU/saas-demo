@@ -42,7 +42,22 @@ export class RolesController {
   @HttpCode(HttpStatus.CREATED)
   @ResponseMessage('Role successfully created')
   @ApiOperation({ summary: 'Create a new role' })
-  @ApiResponse({ status: 201, description: 'Role successfully created' })
+  @ApiResponse({
+    status: 201,
+    description: 'Role successfully created',
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'Role successfully created',
+        data: {
+          id: 'role-id',
+          name: 'Manager',
+          description: 'Team Manager',
+          isDefault: false
+        }
+      }
+    }
+  })
   @ApiResponse({
     status: 400,
     description: 'Role with that name already exists',
@@ -60,10 +75,28 @@ export class RolesController {
   @ApiOperation({
     summary: 'Retrieve all roles with their permissions and users',
   })
-  @ApiResponse({ status: 200, description: 'List of all roles returned' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of all roles returned',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Roles retrieved successfully',
+        data: [
+          {
+            id: 'role-id',
+            name: 'Admin',
+            description: 'Administrator role',
+            isDefault: false,
+            permissions: ['users:read', 'users:write']
+          }
+        ]
+      }
+    }
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getAllRoles() {
-    return this.rolesService.getAllRoles();
+  async getAllRoles(@CurrentUser() user: any) {
+    return this.rolesService.getAllRoles(user);
   }
 
   @Get('user/:userId/roles')
@@ -72,11 +105,28 @@ export class RolesController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('User roles retrieved successfully')
   @ApiOperation({ summary: 'Retrieve all roles assigned to a specific user' })
-  @ApiResponse({ status: 200, description: "User's roles returned" })
+  @ApiResponse({
+    status: 200,
+    description: "User's roles returned",
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'User roles retrieved successfully',
+        data: [
+          {
+            id: 'role-id',
+            name: 'User',
+            description: 'Standard User',
+            permissions: ['dashboard:read']
+          }
+        ]
+      }
+    }
+  })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUserRoles(@Param('userId') userId: string) {
-    return this.rolesService.getUserRoles(userId);
+  async getUserRoles(@Param('userId') userId: string, @CurrentUser() user: any) {
+    return this.rolesService.getUserRoles(userId, user);
   }
 
   @Get(':id')
@@ -85,11 +135,27 @@ export class RolesController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Role details retrieved successfully')
   @ApiOperation({ summary: 'Retrieve a single role by ID' })
-  @ApiResponse({ status: 200, description: 'Role details returned' })
+  @ApiResponse({
+    status: 200,
+    description: 'Role details returned',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Role details retrieved successfully',
+        data: {
+          id: 'role-id',
+          name: 'Admin',
+          description: 'Administrator role',
+          isDefault: false,
+          permissions: ['users:read', 'users:write']
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 404, description: 'Role not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getRoleById(@Param('id') id: string) {
-    return this.rolesService.getRoleById(id);
+  async getRoleById(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.rolesService.getRoleById(id, user);
   }
 
   @Patch(':id')
@@ -98,12 +164,27 @@ export class RolesController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Role successfully updated')
   @ApiOperation({ summary: 'Update a role name, description, or default flag' })
-  @ApiResponse({ status: 200, description: 'Role successfully updated' })
+  @ApiResponse({
+    status: 200,
+    description: 'Role successfully updated',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Role successfully updated',
+        data: {
+          id: 'role-id',
+          name: 'Super Admin',
+          description: 'Super Administrator',
+          isDefault: false
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 400, description: 'Role name already taken' })
   @ApiResponse({ status: 404, description: 'Role not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
-    return this.rolesService.updateRole(id, dto);
+  async updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto, @CurrentUser() user: any) {
+    return this.rolesService.updateRole(id, dto, user);
   }
 
   @Delete(':id')
@@ -132,6 +213,13 @@ export class RolesController {
   @ApiResponse({
     status: 200,
     description: 'Permissions successfully assigned to role',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Permissions successfully assigned to role',
+        data: { count: 2 }
+      }
+    }
   })
   @ApiResponse({
     status: 400,
@@ -182,6 +270,13 @@ export class RolesController {
   @ApiResponse({
     status: 200,
     description: 'Role successfully assigned to user(s)',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Role successfully assigned to user(s)',
+        data: { count: 1 }
+      }
+    }
   })
   @ApiResponse({
     status: 400,

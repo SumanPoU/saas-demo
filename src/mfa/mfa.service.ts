@@ -179,7 +179,7 @@ export class MfaService {
     // Log in AuditLog
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: userId,
         action: 'mfa_enabled',
         entityType: 'user',
@@ -243,7 +243,7 @@ export class MfaService {
     // Log Audit Log
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: userId,
         action: 'mfa_backup_codes_regenerated',
         entityType: 'user',
@@ -368,15 +368,22 @@ export class MfaService {
     // Retrieve user and establish the login session (delegating to AuthService)
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { roles: true },
+      include: { roles: true, tenantMemberships: true },
     });
 
     if (!user) {
       throw new UnauthorizedException('User account not found');
     }
 
+    const defaultMembership = user.tenantMemberships?.find((m: any) => m.isOwner) || user.tenantMemberships?.[0];
+    if (!defaultMembership) {
+      throw new UnauthorizedException('User does not belong to any workspace. Contact support.');
+    }
+    const tenantId = defaultMembership.tenantId;
+
     const loginResult = await this.authService.establishSessionAndIssueTokens(
       user,
+      tenantId,
       ipAddress,
       userAgent,
     );
@@ -384,7 +391,7 @@ export class MfaService {
     // Audit log
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: userId,
         action: 'mfa_verified',
         entityType: 'user',
@@ -436,7 +443,7 @@ export class MfaService {
     // Write to audit log
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: deviceToken.userId,
         action: 'new_device_authorized',
         entityType: 'user',
@@ -497,7 +504,7 @@ export class MfaService {
     // Audit Log
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: userId,
         action: 'mfa_disabled',
         entityType: 'user',
@@ -539,7 +546,7 @@ export class MfaService {
     await this.prisma.mfaRecoveryToken.create({
       data: {
         userId: user.id,
-        tenantId: 'default',
+        
         tokenHash,
         expiresAt,
       },
@@ -635,7 +642,7 @@ export class MfaService {
     // Write to audit log
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: userId,
         action: 'mfa_recovery_used',
         entityType: 'user',

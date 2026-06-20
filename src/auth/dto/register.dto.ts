@@ -82,4 +82,12 @@ export class CompleteRegisterDto {
   @IsString()
   @IsNotEmpty()
   confirmPassword: string;
+
+  @ApiPropertyOptional({
+    example: 'Acme Corp',
+    description: 'Name of the workspace/tenant to create. If not provided, a default one will be created.',
+  })
+  @IsString()
+  @IsOptional()
+  tenantName?: string;
 }

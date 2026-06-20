@@ -24,6 +24,11 @@ describe('AuthService', () => {
     mustChangePassword: true,
     passwordHash: '',
     roles: [],
+    tenantMemberships: [{
+      tenantId: 'tenant-1',
+      isOwner: true,
+      tenant: { name: 'Test Workspace', slug: 'test-workspace' }
+    }],
   };
 
   const authPayloadUser = {
@@ -49,6 +54,11 @@ describe('AuthService', () => {
         ],
       },
     ],
+    tenantMemberships: [{
+      tenantId: 'tenant-1',
+      isOwner: true,
+      tenant: { name: 'Test Workspace', slug: 'test-workspace' }
+    }],
   };
 
   beforeEach(() => {
@@ -90,6 +100,12 @@ describe('AuthService', () => {
         updateMany: jest.fn(),
       },
       auditLog: {
+        create: jest.fn(),
+      },
+      tenantMembership: {
+        create: jest.fn(),
+      },
+      tenant: {
         create: jest.fn(),
       },
     };
@@ -167,7 +183,7 @@ describe('AuthService', () => {
     expect(prisma.passwordResetToken.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: activeTempUser.id,
-        tenantId: 'default',
+        
         tokenHash: expect.any(String),
         expiresAt: expect.any(Date),
       }),
@@ -343,7 +359,7 @@ describe('AuthService', () => {
     expect(prisma.emailVerificationToken.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: 'user-1',
-        tenantId: 'default',
+        
         email: 'new.user@example.com',
         tokenHash: expect.any(String),
         expiresAt: expect.any(Date),
@@ -383,6 +399,8 @@ describe('AuthService', () => {
       email: 'new.user@example.com',
       firstName: 'New',
     });
+    prisma.tenant.create.mockResolvedValue({ id: 'tenant-1' });
+    prisma.$transaction = jest.fn((cb) => cb(prisma));
 
     await expect(
       service.registerComplete({
@@ -425,7 +443,7 @@ describe('AuthService', () => {
     prisma.mfaConfig.findUnique.mockResolvedValue(null);
     prisma.userSession.create.mockResolvedValue({
       id: 'session-1',
-      tenantId: 'default',
+      
     });
     prisma.user.findUnique.mockResolvedValue(authPayloadUser);
 
@@ -446,7 +464,7 @@ describe('AuthService', () => {
     expect(prisma.userSession.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: user.id,
-        tenantId: 'default',
+        
         ipAddress: '127.0.0.1',
         deviceType: 'desktop',
         platform: 'Windows',
@@ -456,7 +474,7 @@ describe('AuthService', () => {
       data: expect.objectContaining({
         sessionId: 'session-1',
         userId: user.id,
-        tenantId: 'default',
+        
         tokenHash: expect.any(String),
       }),
     });

@@ -115,7 +115,7 @@ export class UsersService {
 
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId,
         action: 'USER_CREATE',
         entityType: 'User',
@@ -126,7 +126,7 @@ export class UsersService {
     return user;
   }
 
-  async getUsers(query: PaginationQueryDto) {
+  async getUsers(query: PaginationQueryDto, requestUser: any) {
     const search = query.search?.trim();
     const where: Prisma.UserWhereInput = search
       ? {
@@ -139,6 +139,12 @@ export class UsersService {
         }
       : {};
 
+    if (!requestUser.isSuperAdmin && requestUser.tenantId) {
+      where.tenantMemberships = {
+        some: { tenantId: requestUser.tenantId },
+      };
+    }
+
     return this.pagination.paginate(this.prisma.user, query, {
       where,
       select: safeUserSelect,
@@ -146,21 +152,29 @@ export class UsersService {
     });
   }
 
-  async getUserById(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+  async getUserById(id: string, requestUser: any) {
+    const where: Prisma.UserWhereInput = { id };
+    
+    if (!requestUser.isSuperAdmin && requestUser.tenantId) {
+      where.tenantMemberships = {
+        some: { tenantId: requestUser.tenantId },
+      };
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where,
       select: safeUserSelect,
     });
 
     if (!user) {
-      throw new NotFoundException(`User with ID "${id}" not found`);
+      throw new NotFoundException(`User with ID "${id}" not found in your workspace`);
     }
 
     return user;
   }
 
-  async updateUser(id: string, dto: UpdateUserDto) {
-    await this.getUserById(id);
+  async updateUser(id: string, dto: UpdateUserDto, requestUser: any) {
+    await this.getUserById(id, requestUser);
 
     return this.prisma.user.update({
       where: { id },
@@ -169,10 +183,11 @@ export class UsersService {
     });
   }
 
-  async resetUserPassword(id: string, actorId: string) {
-    const user = await this.getUserById(id);
+  async resetUserPassword(id: string, requestUser: any) {
+    const user = await this.getUserById(id, requestUser);
     const temporaryPassword = this.generateTemporaryPassword();
     const saltRounds = await this.runtimeConfig.getBcryptSaltRounds();
+    const actorId = requestUser.id || requestUser.userId;
     const passwordHash = await bcrypt.hash(temporaryPassword, saltRounds);
 
     await this.prisma.user.update({
@@ -202,7 +217,7 @@ export class UsersService {
 
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId,
         action: 'USER_PASSWORD_RESET_BY_ADMIN',
         entityType: 'User',
@@ -210,15 +225,17 @@ export class UsersService {
       },
     });
 
-    return this.getUserById(id);
+    return this.getUserById(id, requestUser);
   }
 
-  async deleteUser(id: string, actorId: string) {
-    if (id === actorId) {
+  async deleteUser(id: string, requestUser: any) {
+    if (id === requestUser.id || id === requestUser.userId) {
       throw new BadRequestException('You cannot delete your own account');
     }
 
-    await this.getUserById(id);
+    await this.getUserById(id, requestUser);
+
+    const actorId = requestUser.id || requestUser.userId;
 
     const user = await this.prisma.user.update({
       where: { id },
@@ -238,7 +255,7 @@ export class UsersService {
 
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId,
         action: 'USER_DELETE',
         entityType: 'User',

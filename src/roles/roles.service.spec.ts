@@ -45,15 +45,18 @@ describe('RolesService', () => {
   });
 
   it('creates a role and flattens permissions from rolePermissions', async () => {
-    prisma.role.findUnique.mockResolvedValue(null);
+    prisma.role.findFirst.mockResolvedValue(null);
     prisma.role.findFirst.mockResolvedValue(null);
     prisma.role.create.mockResolvedValue(role);
 
-    const result = await service.createRole({
-      name: 'Admin',
-      description: 'Admin role',
-      isDefault: true,
-    });
+    const result = await service.createRole(
+      {
+        name: 'Admin',
+        description: 'Admin role',
+        isDefault: true,
+      },
+      { id: 'admin-1', isSuperAdmin: true, tenantId: null },
+    );
 
     expect(result).toMatchObject({
       id: 'role-1',
@@ -64,13 +67,14 @@ describe('RolesService', () => {
         name: 'Admin',
         description: 'Admin role',
         isDefault: true,
+        tenantId: null,
       },
       include: expect.any(Object),
     });
   });
 
   it('enforces only one default role', async () => {
-    prisma.role.findUnique.mockResolvedValue(null);
+    prisma.role.findFirst.mockResolvedValue(null);
     prisma.role.findFirst.mockResolvedValue({
       id: 'role-default',
       name: 'User',
@@ -78,17 +82,17 @@ describe('RolesService', () => {
     });
 
     await expect(
-      service.createRole({ name: 'Member', isDefault: true }),
+      service.createRole({ name: 'Member', isDefault: true }, { id: 'admin-1', isSuperAdmin: true, tenantId: null }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.role.create).not.toHaveBeenCalled();
   });
 
   it('blocks deleting roles assigned to users', async () => {
-    prisma.role.findUnique.mockResolvedValue(role);
+    prisma.role.findFirst.mockResolvedValue(role);
     prisma.user.count.mockResolvedValue(3);
 
-    await expect(service.deleteRole('role-1')).rejects.toBeInstanceOf(
+    await expect(service.deleteRole('role-1', { id: 'admin-1' })).rejects.toBeInstanceOf(
       BadRequestException,
     );
 
@@ -96,7 +100,7 @@ describe('RolesService', () => {
   });
 
   it('assigns permissions to a role with idempotent upserts', async () => {
-    prisma.role.findUnique.mockResolvedValue(role);
+    prisma.role.findFirst.mockResolvedValue(role);
     prisma.permission.findMany.mockResolvedValue([
       { id: 'permission-1', name: 'users:read' },
       { id: 'permission-2', name: 'users:create' },
@@ -140,11 +144,11 @@ describe('RolesService', () => {
   });
 
   it('rejects assigning missing permission ids', async () => {
-    prisma.role.findUnique.mockResolvedValue(role);
+    prisma.role.findFirst.mockResolvedValue(role);
     prisma.permission.findMany.mockResolvedValue([{ id: 'permission-1' }]);
 
     await expect(
-      service.assignPermissionsToRole('role-1', ['permission-1', 'missing']),
+      service.assignPermissionsToRole('role-1', ['permission-1', 'missing'], 'admin-1'),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.rolePermission.upsert).not.toHaveBeenCalled();
@@ -159,9 +163,9 @@ describe('RolesService', () => {
   });
 
   it('throws NotFoundException for missing roles', async () => {
-    prisma.role.findUnique.mockResolvedValue(null);
+    prisma.role.findFirst.mockResolvedValue(null);
 
-    await expect(service.getRoleById('missing-role')).rejects.toBeInstanceOf(
+    await expect(service.getRoleById('missing-role', { id: 'admin-1' })).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });

@@ -31,6 +31,7 @@ export class RolesService {
   private async ensureSingleDefault(
     isDefault: boolean | undefined,
     excludeId?: string,
+    tenantId?: string,
     tx?: Omit<
       PrismaService,
       '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
@@ -43,6 +44,7 @@ export class RolesService {
     const existingDefault = await client.role.findFirst({
       where: {
         isDefault: true,
+        tenantId,
         ...(excludeId ? { id: { not: excludeId } } : {}),
       },
     });
@@ -60,22 +62,24 @@ export class RolesService {
    * Validates name uniqueness, enforces the single-default constraint if
    * isDefault is true, and persists the new role with its permissions.
    */
-  async createRole(dto: CreateRoleDto, createdById?: string) {
-    const existingRole = await this.prisma.role.findUnique({
-      where: { name: dto.name },
+  async createRole(dto: CreateRoleDto, reqUser: any) {
+    const tenantId = reqUser.isSuperAdmin ? (dto as any).tenantId || reqUser.tenantId : reqUser.tenantId;
+    const existingRole = await this.prisma.role.findFirst({
+      where: { name: dto.name, tenantId },
     });
 
     if (existingRole) {
       throw new BadRequestException(`Role "${dto.name}" already exists`);
     }
 
-    await this.ensureSingleDefault(dto.isDefault);
+    await this.ensureSingleDefault(dto.isDefault, undefined, undefined, tenantId);
 
     const role = await this.prisma.role.create({
       data: {
         name: dto.name,
         description: dto.description,
         isDefault: dto.isDefault ?? false,
+        tenantId,
       },
       include: {
         rolePermissions: {
@@ -92,8 +96,11 @@ export class RolesService {
    * Returns every role ordered by creation date, including their permissions
    * and the users currently assigned to each role.
    */
-  async getAllRoles() {
+  async getAllRoles(reqUser?: any) {
+    const where = reqUser?.isSuperAdmin ? {} : { tenantId: reqUser?.tenantId };
+    
     const roles = await this.prisma.role.findMany({
+      where,
       include: {
         rolePermissions: {
           include: { permission: true },
@@ -113,9 +120,14 @@ export class RolesService {
    * Fetches a single role with full permission and user details.
    * Throws NotFoundException if the role does not exist.
    */
-  async getRoleById(id: string) {
-    const role = await this.prisma.role.findUnique({
-      where: { id },
+  async getRoleById(id: string, reqUser?: any) {
+    const where: any = { id };
+    if (reqUser && !reqUser.isSuperAdmin) {
+      where.tenantId = reqUser.tenantId;
+    }
+
+    const role = await this.prisma.role.findFirst({
+      where,
       include: {
         rolePermissions: {
           include: {
@@ -142,12 +154,11 @@ export class RolesService {
    * constraint when promoting to default (excluding itself), and applies
    * the partial update to name, description, or isDefault.
    */
-  async updateRole(id: string, dto: UpdateRoleDto) {
-    const role = await this.getRoleById(id);
+  async updateRole(id: string, dto: UpdateRoleDto, reqUser?: any) {
+    const role = await this.getRoleById(id, reqUser);
 
     if (dto.name && dto.name !== role.name) {
-      const existingRole = await this.prisma.role.findUnique({
-        where: { name: dto.name },
+      const existingRole = await this.prisma.role.findFirst({ where: { name: dto.name, tenantId: role.tenantId },
       });
 
       if (existingRole) {
@@ -158,7 +169,7 @@ export class RolesService {
     // Only enforce the constraint when isDefault is being explicitly set to true.
     // If this role is already the default and we're keeping it, excludeId
     // prevents a false conflict against itself.
-    await this.ensureSingleDefault(dto.isDefault, id);
+    await this.ensureSingleDefault(dto.isDefault, id, role.tenantId || undefined);
 
     const updatedRole = await this.prisma.role.update({
       where: { id },
@@ -352,11 +363,12 @@ export class RolesService {
    * Returns all roles assigned to a user, each populated with their
    * permissions. Throws NotFoundException if the user does not exist.
    */
-  async getUserRoles(userId: string) {
+  async getUserRoles(userId: string, reqUser?: any) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
-        roles: {
+        roles: reqUser?.isSuperAdmin ? { include: { rolePermissions: { include: { permission: true } } } } : { 
+          where: { tenantId: reqUser?.tenantId },
           include: {
             rolePermissions: { include: { permission: true } },
           },

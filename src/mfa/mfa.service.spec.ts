@@ -166,6 +166,11 @@ describe('MfaService', () => {
       id: 'user-1',
       email: 'user@example.com',
       roles: [],
+      tenantMemberships: [{
+        tenantId: 'tenant-1',
+        isOwner: true,
+        tenant: { name: 'Test', slug: 'test' }
+      }],
     });
     authService.establishSessionAndIssueTokens.mockResolvedValue({
       tokens: {
@@ -200,12 +205,13 @@ describe('MfaService', () => {
     });
     expect(authService.establishSessionAndIssueTokens).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'user-1' }),
+      'tenant-1',
       '127.0.0.1',
       'Jest Agent',
     );
     expect(prisma.auditLog.create).toHaveBeenCalledWith({
       data: {
-        tenantId: 'default',
+        
         actorId: 'user-1',
         action: 'mfa_verified',
         entityType: 'user',

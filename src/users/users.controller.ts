@@ -46,6 +46,18 @@ export class UsersController {
     status: 201,
     description:
       'User created successfully. Temporary password is sent by email and is not returned in the response.',
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'User created successfully',
+        data: {
+          id: 'user-id',
+          email: 'newuser@example.com',
+          username: 'newuser',
+          isActive: true
+        }
+      }
+    }
   })
   @ApiResponse({
     status: 400,
@@ -53,7 +65,7 @@ export class UsersController {
   })
   @ApiResponse({ status: 409, description: 'User already exists' })
   async createUser(@Body() dto: CreateUserDto, @CurrentUser() user: any) {
-    return this.usersService.createUser(dto, user.id);
+    return this.usersService.createUser(dto, user);
   }
 
   @Get()
@@ -62,9 +74,28 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Users retrieved successfully')
   @ApiOperation({ summary: 'Retrieve users with pagination and search' })
-  @ApiResponse({ status: 200, description: 'Users returned successfully' })
-  async getUsers(@Query() query: PaginationQueryDto) {
-    return this.usersService.getUsers(query);
+  @ApiResponse({
+    status: 200,
+    description: 'Users returned successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Users retrieved successfully',
+        data: {
+          items: [
+            { id: 'user-1', email: 'user1@example.com', username: 'user1', isActive: true },
+            { id: 'user-2', email: 'user2@example.com', username: 'user2', isActive: true }
+          ],
+          total: 2,
+          page: 1,
+          limit: 10,
+          totalPages: 1
+        }
+      }
+    }
+  })
+  async getUsers(@Query() query: PaginationQueryDto, @CurrentUser() user: any) {
+    return this.usersService.getUsers(query, user);
   }
 
   @Get(':id')
@@ -73,10 +104,26 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('User retrieved successfully')
   @ApiOperation({ summary: 'Retrieve a single user by ID' })
-  @ApiResponse({ status: 200, description: 'User returned successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'User returned successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'User retrieved successfully',
+        data: {
+          id: 'user-id',
+          email: 'user@example.com',
+          username: 'user',
+          isActive: true,
+          roles: []
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async getUserById(@Param('id') id: string) {
-    return this.usersService.getUserById(id);
+  async getUserById(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.getUserById(id, user);
   }
 
   @Patch(':id')
@@ -85,10 +132,27 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('User updated successfully')
   @ApiOperation({ summary: 'Update safe user profile and status fields' })
-  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'User updated successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'User updated successfully',
+        data: {
+          id: 'user-id',
+          email: 'user@example.com',
+          username: 'user',
+          firstName: 'John',
+          lastName: 'Doe',
+          isActive: true
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.updateUser(id, dto);
+  async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: any) {
+    return this.usersService.updateUser(id, dto, user);
   }
 
   @Post(':id/reset-password')
@@ -106,10 +170,22 @@ export class UsersController {
     status: 200,
     description:
       'Temporary password emailed. The generated password is not returned in the response.',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Temporary password generated and emailed successfully',
+        data: {
+          id: 'user-id',
+          email: 'user@example.com',
+          username: 'user',
+          isActive: true
+        }
+      }
+    }
   })
   @ApiResponse({ status: 404, description: 'User not found' })
   async resetUserPassword(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.usersService.resetUserPassword(id, user.id);
+    return this.usersService.resetUserPassword(id, user);
   }
 
   @Delete(':id')
@@ -123,10 +199,25 @@ export class UsersController {
     description:
       'This endpoint deactivates the account instead of removing the database row. A user cannot delete their own account.',
   })
-  @ApiResponse({ status: 200, description: 'User deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'User deleted successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'User deleted successfully',
+        data: {
+          id: 'user-id',
+          email: 'user@example.com',
+          username: 'user',
+          isActive: false
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 400, description: 'Cannot delete your own account' })
   @ApiResponse({ status: 404, description: 'User not found' })
   async deleteUser(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.usersService.deleteUser(id, user.id);
+    return this.usersService.deleteUser(id, user);
   }
 }

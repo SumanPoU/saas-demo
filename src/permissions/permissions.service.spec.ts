@@ -18,12 +18,14 @@ describe('PermissionsService', () => {
     prisma = {
       permission: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
       },
       permissionGroup: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         findMany: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
@@ -41,12 +43,12 @@ describe('PermissionsService', () => {
   });
 
   it('creates a permission and flattens roles from rolePermissions', async () => {
-    prisma.permission.findUnique.mockResolvedValue(null);
+    prisma.permission.findFirst.mockResolvedValue(null);
     prisma.permission.create.mockResolvedValue(permission);
 
     const result = await service.createPermission(
       { name: 'users:read', description: 'Read users' },
-      'admin-1',
+      { id: 'admin-1' },
     );
 
     expect(result).toMatchObject({
@@ -64,17 +66,17 @@ describe('PermissionsService', () => {
   });
 
   it('rejects duplicate permission names', async () => {
-    prisma.permission.findUnique.mockResolvedValue(permission);
+    prisma.permission.findFirst.mockResolvedValue(permission);
 
     await expect(
-      service.createPermission({ name: 'users:read' }, 'admin-1'),
+      service.createPermission({ name: 'users:read' }, { id: 'admin-1' }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.permission.create).not.toHaveBeenCalled();
   });
 
   it('blocks deleting permissions assigned to roles', async () => {
-    prisma.permission.findUnique.mockResolvedValue(permission);
+    prisma.permission.findFirst.mockResolvedValue(permission);
     prisma.rolePermission.count.mockResolvedValue(2);
 
     await expect(
@@ -85,7 +87,7 @@ describe('PermissionsService', () => {
   });
 
   it('assigns permission to groups only when all group ids exist', async () => {
-    prisma.permission.findUnique.mockResolvedValue(permission);
+    prisma.permission.findFirst.mockResolvedValue(permission);
     prisma.permissionGroup.findMany.mockResolvedValue([{ id: 'group-1' }]);
 
     await expect(

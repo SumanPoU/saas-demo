@@ -26,6 +26,9 @@ import { AuditModule } from './audit/audit.module';
 import { RuntimeConfigModule } from './config/runtime-config.module';
 import { RuntimeConfigService } from './config/runtime-config.service';
 import { GlobalConfigModule } from './global-config/global-config.module';
+import { TenantsModule } from './tenants/tenants.module';
+import { TenantMembersModule } from './tenant-members/tenant-members.module';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
@@ -46,6 +49,9 @@ import { GlobalConfigModule } from './global-config/global-config.module';
     UsersModule,
     AuditModule,
     GlobalConfigModule,
+    TenantsModule,
+    TenantMembersModule,
+    BillingModule,
     MailModule,
     CommonModule,
     ThrottlerModule.forRootAsync({

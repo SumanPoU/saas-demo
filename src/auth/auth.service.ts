@@ -97,7 +97,6 @@ export class AuthService {
     await this.prisma.emailVerificationToken.create({
       data: {
         userId: user.id,
-        tenantId: 'default',
         email: user.email,
         tokenHash,
         expiresAt,
@@ -229,21 +228,55 @@ export class AuthService {
       where: { isDefault: true },
     });
 
-    // Update user record: save password, activate the user, and ensure emailVerified is true
-    const updatedUser = await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash,
-        passwordChangedAt: new Date(),
-        mustChangePassword: false,
-        isActive: true,
-        emailVerified: true,
-        roles: defaultRole
-          ? {
-              connect: { id: defaultRole.id },
-            }
-          : undefined,
-      },
+    const generatedTenantName = dto.tenantName || `${user.firstName || 'My'} Workspace`;
+    const generatedSlug = generatedTenantName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + crypto.randomBytes(3).toString('hex');
+    const schemaName = 'tenant_' + crypto.randomUUID().replace(/-/g, '');
+
+    const { updatedUser, tenant } = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          passwordChangedAt: new Date(),
+          mustChangePassword: false,
+          isActive: true,
+          emailVerified: true,
+          roles: defaultRole
+            ? {
+                connect: { id: defaultRole.id },
+              }
+            : undefined,
+        },
+      });
+
+      const t = await tx.tenant.create({
+        data: {
+          name: generatedTenantName,
+          slug: generatedSlug,
+          schemaName: schemaName,
+        }
+      });
+
+      await tx.tenantMembership.create({
+        data: {
+          tenantId: t.id,
+          userId: u.id,
+          role: 'owner',
+          isOwner: true,
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: t.id,
+          actorId: u.id,
+          action: 'USER_REGISTER_COMPLETE',
+          entityType: 'User',
+          entityId: u.id,
+        },
+      });
+
+      return { updatedUser: u, tenant: t };
     });
 
     // Trigger welcoming completed email
@@ -251,17 +284,6 @@ export class AuthService {
       updatedUser.email,
       updatedUser.firstName ?? undefined,
     );
-
-    // Create Audit Log
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId: 'default',
-        actorId: updatedUser.id,
-        action: 'USER_REGISTER_COMPLETE',
-        entityType: 'User',
-        entityId: updatedUser.id,
-      },
-    });
 
     return {
       success: true,
@@ -283,6 +305,7 @@ export class AuthService {
       },
       include: {
         roles: true,
+        tenantMemberships: true,
       },
     });
 
@@ -302,8 +325,14 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email, username, or password');
     }
 
+    const defaultMembership = user.tenantMemberships?.find((m: any) => m.isOwner) || user.tenantMemberships?.[0];
+    if (!defaultMembership) {
+      throw new UnauthorizedException('User does not belong to any workspace. Contact support.');
+    }
+    const tenantId = defaultMembership.tenantId;
+
     if (user.mustChangePassword) {
-      return this.initiateRequiredPasswordChange(user, ipAddress, userAgent);
+      return this.initiateRequiredPasswordChange(user, tenantId, ipAddress, userAgent);
     }
 
     // Update user last login timestamp
@@ -350,7 +379,6 @@ export class AuthService {
         await this.prisma.emailVerificationToken.create({
           data: {
             userId: user.id,
-            tenantId: 'default',
             email: user.email,
             tokenHash,
             expiresAt,
@@ -386,11 +414,12 @@ export class AuthService {
     if (mfaResult) return mfaResult;
 
     // 3. Normal Login Session Creation and Token Issuance
-    return this.establishSessionAndIssueTokens(user, ipAddress, userAgent);
+    return this.establishSessionAndIssueTokens(user, tenantId, ipAddress, userAgent);
   }
 
   private async initiateRequiredPasswordChange(
     user: any,
+    tenantId: string,
     ipAddress?: string,
     userAgent?: string,
   ) {
@@ -401,7 +430,6 @@ export class AuthService {
     await this.prisma.passwordResetToken.create({
       data: {
         userId: user.id,
-        tenantId: 'default',
         tokenHash,
         expiresAt,
       },
@@ -409,7 +437,7 @@ export class AuthService {
 
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        tenantId: tenantId,
         actorId: user.id,
         action: 'USER_REQUIRED_PASSWORD_CHANGE_INITIATED',
         entityType: 'User',
@@ -503,7 +531,7 @@ export class AuthService {
 
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: resetToken.userId,
         action: 'USER_REQUIRED_PASSWORD_CHANGE_COMPLETE',
         entityType: 'User',
@@ -526,6 +554,7 @@ export class AuthService {
    */
   public async establishSessionAndIssueTokens(
     user: any,
+    tenantId: string,
     ipAddress?: string,
     userAgent?: string,
   ) {
@@ -538,7 +567,7 @@ export class AuthService {
     const session = await this.prisma.userSession.create({
       data: {
         userId: user.id,
-        tenantId: 'default',
+        tenantId: tenantId,
         ipAddress,
         userAgent,
         deviceName: deviceDetails.deviceName,
@@ -554,6 +583,8 @@ export class AuthService {
       user.email,
       user.username,
       session.id,
+      tenantId,
+      user.isSuperAdmin || false,
     );
 
     // Hash the refresh token and save to DB
@@ -569,7 +600,7 @@ export class AuthService {
       data: {
         sessionId: session.id,
         userId: user.id,
-        tenantId: 'default',
+        tenantId: tenantId,
         tokenHash: refreshTokenHash,
         familyId: crypto.randomUUID(),
         expiresAt: refreshExpiresAt,
@@ -579,7 +610,7 @@ export class AuthService {
     // Create Audit Log
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: user.id,
         action: 'USER_LOGIN',
         entityType: 'UserSession',
@@ -604,6 +635,101 @@ export class AuthService {
         : 'Login successful',
     };
   }
+
+  /**
+   * Switch the active tenant context for a given session.
+   */
+  async switchTenant(userId: string, sessionId: string, newTenantId: string, ipAddress?: string, userAgent?: string) {
+    // 1. Verify user is a member of the requested tenant
+    const membership = await this.prisma.tenantMembership.findUnique({
+      where: {
+        tenantId_userId: { tenantId: newTenantId, userId }
+      }
+    });
+
+    if (!membership) {
+      throw new UnauthorizedException('User is not a member of the requested workspace.');
+    }
+
+    // 2. Fetch active session
+    const session = await this.prisma.userSession.findUnique({
+      where: { id: sessionId }
+    });
+
+    if (!session || session.userId !== userId || session.isRevoked) {
+      throw new UnauthorizedException('Invalid or expired session.');
+    }
+
+    // 3. Update session tenantId
+    await this.prisma.userSession.update({
+      where: { id: sessionId },
+      data: { tenantId: newTenantId }
+    });
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { roles: true }
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+
+    // 4. Generate new tokens
+    const tokens = await this.generateTokenPair(
+      user.id,
+      user.email,
+      user.username,
+      session.id,
+      newTenantId,
+      user.isSuperAdmin || false,
+    );
+
+    // 5. Hash new refresh token and replace the family
+    const refreshTokenHash = this.hashToken(tokens.refreshToken);
+    const refreshExpiresAt = new Date();
+    const refreshTTL = await this.runtimeConfig.getString('JWT_REFRESH_EXPIRES_IN');
+    refreshExpiresAt.setDate(refreshExpiresAt.getDate() + this.parseDurationToDays(refreshTTL));
+
+    // Revoke old tokens in this session to force clients to use the new one
+    await this.prisma.refreshToken.updateMany({
+      where: { sessionId: session.id, isRevoked: false },
+      data: { isRevoked: true, revokedAt: new Date() }
+    });
+
+    await this.prisma.refreshToken.create({
+      data: {
+        sessionId: session.id,
+        userId: user.id,
+        tenantId: newTenantId,
+        tokenHash: refreshTokenHash,
+        familyId: crypto.randomUUID(),
+        expiresAt: refreshExpiresAt,
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: newTenantId,
+        actorId: user.id,
+        action: 'USER_SWITCH_TENANT',
+        entityType: 'UserSession',
+        entityId: session.id,
+        ipAddress,
+        userAgent,
+      },
+    });
+
+    const authUser = await this.getAuthUserPayload(user.id);
+
+    return {
+      tokens,
+      user: authUser,
+      message: 'Switched workspace successfully.',
+    };
+  }
+
+
 
   /**
    * Refresh the access and refresh token pair using Refresh Token Rotation (RTR).
@@ -659,7 +785,7 @@ export class AuthService {
 
       await this.prisma.auditLog.create({
         data: {
-          tenantId: 'default',
+          
           actorId: storedToken.userId,
           action: 'SECURITY_TOKEN_REUSE_BREACH',
           entityType: 'UserSession',
@@ -720,6 +846,8 @@ export class AuthService {
       storedToken.user.email,
       storedToken.user.username,
       storedToken.session.id,
+      storedToken.tenantId,
+      storedToken.user.isSuperAdmin || false,
     );
 
     const newHash = this.hashToken(tokens.refreshToken);
@@ -734,7 +862,7 @@ export class AuthService {
       data: {
         sessionId: storedToken.sessionId,
         userId: storedToken.user.id,
-        tenantId: 'default',
+        tenantId: storedToken.tenantId,
         tokenHash: newHash,
         familyId: storedToken.familyId,
         expiresAt: refreshExpiresAt,
@@ -779,7 +907,7 @@ export class AuthService {
 
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: userId,
         action: 'USER_LOGOUT',
         entityType: 'UserSession',
@@ -827,7 +955,7 @@ export class AuthService {
     await this.prisma.passwordResetToken.create({
       data: {
         userId: user.id,
-        tenantId: 'default',
+        
         tokenHash,
         expiresAt,
       },
@@ -983,7 +1111,7 @@ export class AuthService {
     // Create Audit Log
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: user.id,
         action: 'USER_PASSWORD_RESET_COMPLETE',
         entityType: 'User',
@@ -1330,6 +1458,27 @@ export class AuthService {
           },
         });
 
+        const t = await this.prisma.tenant.create({
+          data: {
+            name: `${firstName || username}'s Workspace`,
+            slug: `${username}-workspace-${Math.floor(Math.random() * 1000)}`,
+            schemaName: 'tenant_' + crypto.randomUUID().replace(/-/g, ''),
+          }
+        });
+
+        await this.prisma.tenantMembership.create({
+          data: {
+            tenantId: t.id,
+            userId: user.id,
+            role: 'owner',
+            isOwner: true,
+          }
+        });
+        user = await this.prisma.user.findUnique({
+          where: { id: user.id },
+          include: { roles: true, tenantMemberships: true },
+        });
+
         // Trigger welcoming completed email
         await this.mailService.sendWelcomeNotification(
           user.email,
@@ -1338,6 +1487,12 @@ export class AuthService {
       }
     }
 
+    // After resolving oauth logic, get the user with memberships
+    user = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: { roles: true, tenantMemberships: true },
+    });
+
     if (!user.isActive) {
       throw new UnauthorizedException('This account has been deactivated');
     }
@@ -1345,72 +1500,13 @@ export class AuthService {
     const mfaResult = await this.checkMfaRequired(user);
     if (mfaResult) return mfaResult;
 
-    // 4. Log the user in, establishing a UserSession
-    const sessionTimeoutDays = 90;
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + sessionTimeoutDays);
+    const defaultMembership = user.tenantMemberships?.find((m: any) => m.isOwner) || user.tenantMemberships?.[0];
+    if (!defaultMembership) {
+      throw new UnauthorizedException('User does not belong to any workspace. Contact support.');
+    }
+    const tenantId = defaultMembership.tenantId;
 
-    const deviceDetails = this.parseUserAgent(userAgent);
-
-    const session = await this.prisma.userSession.create({
-      data: {
-        userId: user.id,
-        tenantId: 'default',
-        ipAddress,
-        userAgent,
-        deviceName: deviceDetails.deviceName,
-        deviceType: deviceDetails.deviceType,
-        platform: deviceDetails.platform,
-        expiresAt,
-      },
-    });
-
-    const tokens = await this.generateTokenPair(
-      user.id,
-      user.email,
-      user.username,
-      session.id,
-    );
-
-    const refreshTokenHash = this.hashToken(tokens.refreshToken);
-    const refreshExpiresAt = new Date();
-    const refreshTTL = await this.runtimeConfig.getString(
-      'JWT_REFRESH_EXPIRES_IN',
-    );
-    const refreshDays = this.parseDurationToDays(refreshTTL);
-    refreshExpiresAt.setDate(refreshExpiresAt.getDate() + refreshDays);
-
-    await this.prisma.refreshToken.create({
-      data: {
-        sessionId: session.id,
-        userId: user.id,
-        tenantId: 'default',
-        tokenHash: refreshTokenHash,
-        familyId: crypto.randomUUID(),
-        expiresAt: refreshExpiresAt,
-      },
-    });
-
-    // Create Audit Log
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId: 'default',
-        actorId: user.id,
-        action: `USER_OAUTH_${provider.toUpperCase()}_LOGIN`,
-        entityType: 'UserSession',
-        entityId: session.id,
-        ipAddress,
-        userAgent,
-      },
-    });
-
-    const authUser = await this.getAuthUserPayload(user.id);
-
-    return {
-      tokens,
-      user: authUser,
-      requiresPasswordChange: authUser.mustChangePassword,
-    };
+    return this.establishSessionAndIssueTokens(user, tenantId, ipAddress, userAgent);
   }
 
   /**
@@ -1462,7 +1558,7 @@ export class AuthService {
     await this.prisma.emailVerificationToken.create({
       data: {
         userId: user.id,
-        tenantId: 'default',
+        
         email: user.email,
         tokenHash,
         expiresAt,
@@ -1569,7 +1665,7 @@ export class AuthService {
     // Create Audit Log
     await this.prisma.auditLog.create({
       data: {
-        tenantId: 'default',
+        
         actorId: user.id,
         action: 'USER_CHANGE_PASSWORD',
         entityType: 'User',
@@ -1595,15 +1691,14 @@ export class AuthService {
             rolePermissions: {
               include: {
                 permission: {
-                  select: {
-                    id: true,
-                    name: true,
-                    // description: true,
-                  },
+                  select: { id: true, name: true },
                 },
               },
             },
           },
+        },
+        tenantMemberships: {
+          include: { tenant: true },
         },
       },
     });
@@ -1612,21 +1707,11 @@ export class AuthService {
       throw new UnauthorizedException('User account not found');
     }
 
-    const permissionsById = new Map<
-      string,
-      {
-        id: string;
-        name: string;
-        // description?: string;
-      }
-    >();
+    const permissionsById = new Map<string, { id: string; name: string }>();
 
     for (const role of user.roles) {
       for (const rolePermission of role.rolePermissions) {
-        permissionsById.set(
-          rolePermission.permission.id,
-          rolePermission.permission,
-        );
+        permissionsById.set(rolePermission.permission.id, rolePermission.permission);
       }
     }
 
@@ -1641,8 +1726,13 @@ export class AuthService {
       isSuperAdmin: user.isSuperAdmin,
       mustChangePassword: user.mustChangePassword,
       roles: user.roles.map((role) => role.name),
-      // permissions: Array.from(permissionsById.values()),
       permissions: Array.from(permissionsById.values()).map((p) => p.name),
+      tenants: user.tenantMemberships.map(m => ({
+        tenantId: m.tenantId,
+        name: m.tenant.name,
+        slug: m.tenant.slug,
+        isOwner: m.isOwner,
+      })),
     };
   }
 
@@ -1684,8 +1774,10 @@ export class AuthService {
     email: string,
     username: string,
     sessionId: string,
+    tenantId: string,
+    isSuperAdmin: boolean,
   ) {
-    const payload = { sub: userId, email, username, sessionId };
+    const payload = { sub: userId, email, username, sessionId, tenantId, isSuperAdmin };
     const accessTokenExpiry =
       await this.runtimeConfig.getString('JWT_EXPIRES_IN');
     const refreshTokenExpiry = await this.runtimeConfig.getString(

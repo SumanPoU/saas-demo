@@ -32,7 +32,7 @@ describe('PermissionsController', () => {
     ).resolves.toBe(result);
     expect(permissionsService.createPermission).toHaveBeenCalledWith(
       dto,
-      'admin-1',
+      { id: 'admin-1' },
     );
   });
 
@@ -46,7 +46,7 @@ describe('PermissionsController', () => {
     ).resolves.toBe(result);
     expect(permissionsService.createPermissionGroup).toHaveBeenCalledWith(
       dto,
-      'admin-1',
+      { id: 'admin-1' },
     );
   });
 

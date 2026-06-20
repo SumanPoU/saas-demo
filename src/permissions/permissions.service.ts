@@ -40,9 +40,10 @@ export class PermissionsService {
    * Validates name uniqueness and persists a new permission, optionally
    * recording which admin created it.
    */
-  async createPermission(dto: CreatePermissionDto, createdById?: string) {
-    const existingPermission = await this.prisma.permission.findUnique({
-      where: { name: dto.name },
+  async createPermission(dto: CreatePermissionDto, reqUser?: any) {
+    const tenantId = reqUser?.isSuperAdmin ? (dto as any).tenantId || reqUser?.tenantId : reqUser?.tenantId;
+    const existingPermission = await this.prisma.permission.findFirst({
+      where: { name: dto.name, tenantId },
     });
 
     if (existingPermission) {
@@ -53,7 +54,8 @@ export class PermissionsService {
       data: {
         name: dto.name,
         description: dto.description,
-        createdBy: createdById,
+        createdBy: reqUser?.id || reqUser?.userId,
+        tenantId,
       },
       include: {
         groups: true,
@@ -72,15 +74,17 @@ export class PermissionsService {
    * Returns every permission ordered by creation date, including their
    * associated groups, roles, and the admin who created each entry.
    */
-  async getAllPermissions(query: PaginationQueryDto) {
-    let where = {};
+  async getAllPermissions(query: PaginationQueryDto, reqUser?: any) {
+    let where: any = {};
     if (query.search) {
-      where = {
-        OR: [
-          { name: { contains: query.search, mode: 'insensitive' } },
-          { description: { contains: query.search, mode: 'insensitive' } },
-        ],
-      };
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (reqUser && !reqUser.isSuperAdmin) {
+      where.tenantId = reqUser.tenantId;
     }
 
     const result = await this.pagination.paginate<any>(
@@ -112,9 +116,14 @@ export class PermissionsService {
    * Fetches a single permission with its groups, roles, and creator.
    * Throws NotFoundException if the permission does not exist.
    */
-  async getPermissionById(id: string) {
-    const permission = await this.prisma.permission.findUnique({
-      where: { id },
+  async getPermissionById(id: string, reqUser?: any) {
+    const where: any = { id };
+    if (reqUser && !reqUser.isSuperAdmin) {
+      where.tenantId = reqUser.tenantId;
+    }
+
+    const permission = await this.prisma.permission.findFirst({
+      where,
       include: {
         groups: true,
         rolePermissions: {
@@ -140,8 +149,7 @@ export class PermissionsService {
     await this.getPermissionById(id);
 
     if (dto.name) {
-      const existingPermission = await this.prisma.permission.findUnique({
-        where: { name: dto.name },
+      const existingPermission = await this.prisma.permission.findFirst({ where: { name: dto.name },
       });
 
       if (existingPermission && existingPermission.id !== id) {
@@ -244,10 +252,11 @@ export class PermissionsService {
    */
   async createPermissionGroup(
     dto: CreatePermissionGroupDto,
-    createdById?: string,
+    reqUser?: any,
   ) {
-    const existingGroup = await this.prisma.permissionGroup.findUnique({
-      where: { name: dto.name },
+    const tenantId = reqUser?.isSuperAdmin ? (dto as any).tenantId || reqUser?.tenantId : reqUser?.tenantId;
+    const existingGroup = await this.prisma.permissionGroup.findFirst({
+      where: { name: dto.name, tenantId },
     });
 
     if (existingGroup) {
@@ -260,7 +269,8 @@ export class PermissionsService {
       data: {
         name: dto.name,
         description: dto.description,
-        createdBy: createdById,
+        createdBy: reqUser?.id || reqUser?.userId,
+        tenantId,
       },
       include: {
         permissions: true,
@@ -274,8 +284,14 @@ export class PermissionsService {
    * Returns every permission group ordered by creation date, including
    * their associated permissions and the admin who created each group.
    */
-  async getAllPermissionGroups() {
+  async getAllPermissionGroups(reqUser?: any) {
+    const where: any = {};
+    if (reqUser && !reqUser.isSuperAdmin) {
+      where.tenantId = reqUser.tenantId;
+    }
+
     return this.prisma.permissionGroup.findMany({
+      where,
       include: {
         permissions: true,
         createdUser: { select: { id: true, username: true } },
@@ -289,9 +305,14 @@ export class PermissionsService {
    * Fetches a single group with its permissions and creator details.
    * Throws NotFoundException if the group does not exist.
    */
-  async getPermissionGroupById(id: string) {
-    const group = await this.prisma.permissionGroup.findUnique({
-      where: { id },
+  async getPermissionGroupById(id: string, reqUser?: any) {
+    const where: any = { id };
+    if (reqUser && !reqUser.isSuperAdmin) {
+      where.tenantId = reqUser.tenantId;
+    }
+
+    const group = await this.prisma.permissionGroup.findFirst({
+      where,
       include: {
         permissions: true,
         createdUser: { select: { id: true, username: true } },
@@ -314,8 +335,7 @@ export class PermissionsService {
     await this.getPermissionGroupById(id);
 
     if (dto.name) {
-      const existingGroup = await this.prisma.permissionGroup.findUnique({
-        where: { name: dto.name },
+      const existingGroup = await this.prisma.permissionGroup.findFirst({ where: { name: dto.name },
       });
 
       if (existingGroup && existingGroup.id !== id) {

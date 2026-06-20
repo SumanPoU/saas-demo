@@ -51,6 +51,16 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description: 'Verification OTP sent successfully',
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'Registration initiated. Please check your email for the OTP verification code.',
+        data: {
+          tempUserId: '550e8400-e29b-41d4-a716-446655440000',
+          email: 'user@example.com'
+        }
+      }
+    }
   })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 409, description: 'Email address already in use' })
@@ -68,6 +78,13 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'New verification OTP sent successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'New verification OTP sent successfully',
+        data: null
+      }
+    }
   })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   async resendOtp(@Body() dto: ResendOtpDto) {
@@ -79,7 +96,20 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('OTP successfully verified')
   @ApiOperation({ summary: 'Step 2: Verify the registration OTP code' })
-  @ApiResponse({ status: 200, description: 'OTP successfully verified' })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP successfully verified',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'OTP successfully verified',
+        data: {
+          verificationToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          expiresIn: 3600
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
   async registerVerifyOtp(@Body() dto: VerifyRegisterOtpDto) {
     return this.authService.registerVerifyOtp(dto);
@@ -97,6 +127,16 @@ export class AuthController {
     status: 200,
     description:
       'Account password configured successfully. User must manually login.',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Registration complete. You can now login.',
+        data: {
+          userId: '550e8400-e29b-41d4-a716-446655440000',
+          email: 'user@example.com'
+        }
+      }
+    }
   })
   @ApiResponse({ status: 400, description: 'Password confirmation mismatch' })
   @ApiResponse({
@@ -218,12 +258,61 @@ export class AuthController {
     return this.authService.setRequiredPassword(dto, ipAddress, userAgent);
   }
 
+  @ApiBearerAuth('JWT')
+  @Post('switch-tenant')
+  @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Workspace switched successfully')
+  @ApiOperation({ summary: 'Switch the active tenant context for this session' })
+  @ApiResponse({
+    status: 200,
+    description: 'New token pair generated for the requested tenant',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Workspace switched successfully',
+        data: {
+          accessToken: 'jwt-access-token',
+          refreshToken: 'jwt-refresh-token'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized or not a member of the tenant' })
+  async switchTenant(
+    @Body() dto: import('./dto/switch-tenant.dto').SwitchTenantDto,
+    @CurrentUser() user: any,
+    @Req() req: any,
+  ) {
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    const userAgent = req.headers?.['user-agent'];
+    return this.authService.switchTenant(
+      user.id || user.userId,
+      user.sessionId,
+      dto.tenantId,
+      ipAddress,
+      userAgent,
+    );
+  }
+
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Tokens successfully refreshed')
   @ApiOperation({ summary: 'Rotate JWT access and refresh tokens' })
-  @ApiResponse({ status: 200, description: 'New token pair generated' })
+  @ApiResponse({
+    status: 200,
+    description: 'New token pair generated',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Tokens successfully refreshed',
+        data: {
+          accessToken: 'jwt-access-token',
+          refreshToken: 'jwt-refresh-token'
+        }
+      }
+    }
+  })
   @ApiResponse({
     status: 401,
     description: 'Invalid/expired token or reuse security violation',
@@ -239,7 +328,17 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ResponseMessage('Successfully logged out')
   @ApiOperation({ summary: 'Log out from the current active session' })
-  @ApiResponse({ status: 200, description: 'Session revoked successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Session revoked successfully',
+    schema: {
+      example: {
+        statusCode: 204,
+        message: 'Successfully logged out',
+        data: null
+      }
+    }
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async logout(@CurrentUser() user: any, @Req() req: any) {
     const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
@@ -260,7 +359,20 @@ export class AuthController {
     summary:
       'Step 1: Request password recovery using username or email address',
   })
-  @ApiResponse({ status: 200, description: 'Verification OTP generated' })
+  @ApiResponse({
+    status: 200,
+    description: 'Verification OTP generated',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Password recovery request initiated',
+        data: {
+          verificationId: '550e8400-e29b-41d4-a716-446655440000',
+          email: 'user@example.com'
+        }
+      }
+    }
+  })
   async forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: any) {
     const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     const userAgent = req.headers?.['user-agent'];
@@ -272,7 +384,20 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Password recovery OTP verified successfully')
   @ApiOperation({ summary: 'Step 2: Verify the password recovery OTP code' })
-  @ApiResponse({ status: 200, description: 'OTP verified successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP verified successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Password recovery OTP verified successfully',
+        data: {
+          resetToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          expiresIn: 3600
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
   async resetPasswordVerify(@Body() dto: ResetPasswordVerifyDto) {
     return this.authService.resetPasswordVerify(dto);
@@ -289,6 +414,16 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Password reset successfully, existing sessions terminated',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Password reset successfully',
+        data: {
+          userId: 'user-id',
+          email: 'user@example.com'
+        }
+      }
+    }
   })
   @ApiResponse({ status: 400, description: 'Password confirmation mismatch' })
   @ApiResponse({
@@ -315,6 +450,24 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Authentication successful, login session tokens returned',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Google login successful',
+        data: {
+          tokens: {
+            accessToken: 'jwt-access-token',
+            refreshToken: 'jwt-refresh-token'
+          },
+          user: {
+            id: 'user-id',
+            email: 'user@google.com',
+            username: 'google-user',
+            roles: ['User']
+          }
+        }
+      }
+    }
   })
   @ApiResponse({
     status: 401,
@@ -343,6 +496,24 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Authentication successful, login session tokens returned',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'GitHub login successful',
+        data: {
+          tokens: {
+            accessToken: 'jwt-access-token',
+            refreshToken: 'jwt-refresh-token'
+          },
+          user: {
+            id: 'user-id',
+            email: 'user@github.com',
+            username: 'github-user',
+            roles: ['User']
+          }
+        }
+      }
+    }
   })
   @ApiResponse({
     status: 401,
@@ -370,6 +541,20 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'User profile retrieved successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'User profile retrieved successfully',
+        data: {
+          id: 'user-id',
+          email: 'user@example.com',
+          username: 'user',
+          isActive: true,
+          roles: ['User'],
+          permissions: []
+        }
+      }
+    }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getProfile(@CurrentUser() user: any) {
@@ -387,6 +572,13 @@ export class AuthController {
     status: 200,
     description:
       'Password changed successfully, current session remains active',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Password changed successfully',
+        data: null
+      }
+    }
   })
   @ApiResponse({ status: 400, description: 'Password confirmation mismatch' })
   @ApiResponse({
