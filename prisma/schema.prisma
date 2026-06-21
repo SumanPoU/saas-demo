@@ -71,6 +71,7 @@ model Tenant {
   featureFlagOverrides FeatureFlagOverride[]
   apiUsage             ApiUsage[]
   emailLogs            EmailLog[]
+  mediaFiles           MediaFile[]
 
   @@index([planId])
   @@index([isActive])
@@ -281,6 +282,7 @@ model User {
   mfaRecoveryTokens       MfaRecoveryToken[]
   oauthAccounts           OAuthAccount[]
   auditLogs               AuditLog[]
+  uploadedMedia           MediaFile[]
 
   @@index([email])
   @@index([isActive])
@@ -398,8 +400,8 @@ model RolePermission {
   id String @id @default(uuid()) @db.Uuid
 
   tenantId     String? @db.Uuid
-  roleId       String @db.Uuid
-  permissionId String @db.Uuid
+  roleId       String  @db.Uuid
+  permissionId String  @db.Uuid
 
   role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
@@ -480,9 +482,9 @@ model RefreshToken {
 }
 
 model PasswordResetToken {
-  id       String @id @default(uuid()) @db.Uuid
-  userId   String @db.Uuid
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       String  @id @default(uuid()) @db.Uuid
+  userId   String  @db.Uuid
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenantId String? @db.Uuid
 
   tokenHash String    @unique
@@ -500,12 +502,12 @@ model PasswordResetToken {
 }
 
 model EmailVerificationToken {
-  id       String @id @default(uuid()) @db.Uuid
-  userId   String @db.Uuid
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       String  @id @default(uuid()) @db.Uuid
+  userId   String  @db.Uuid
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenantId String? @db.Uuid
   email    String
-  purpose  String @default("email_verify")
+  purpose  String  @default("email_verify")
 
   tokenHash String    @unique
   isUsed    Boolean   @default(false)
@@ -556,9 +558,9 @@ model MfaBackupCode {
 }
 
 model MfaRecoveryToken {
-  id       String @id @default(uuid()) @db.Uuid
-  userId   String @db.Uuid
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       String  @id @default(uuid()) @db.Uuid
+  userId   String  @db.Uuid
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenantId String? @db.Uuid
 
   tokenHash String    @unique
@@ -659,5 +661,41 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@index([entityType, entityId])
   @@map("audit_logs")
+  @@schema("public")
+}
+
+model MediaFile {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String? @db.Uuid
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  uploadedById String? @db.Uuid
+  uploadedBy   User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  // Storage location — construct URL at runtime, not stored
+  bucketName  String
+  storagePath String // e.g. "tenants/uuid/avatars/file-uuid.png"
+
+  // File metadata
+  originalName String
+  mimeType     String
+  size         Int // bytes
+
+  // Access
+  isPublic Boolean @default(false)
+  purpose  String? // "AVATAR" | "INVOICE_PDF" | "ATTACHMENT"
+
+  // Soft delete — lets you clean up bucket async
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([bucketName, storagePath]) // unique per actual location
+  @@index([tenantId])
+  @@index([uploadedById])
+  @@index([purpose])
+  @@index([deletedAt])
+  @@map("media_files")
   @@schema("public")
 }

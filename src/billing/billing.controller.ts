@@ -145,6 +145,17 @@ export class BillingController {
     return this.billingService.getSubscription(tenantId);
   }
 
+  @Get('tenants/:tenantId/billing/subscription/history')
+  @UseGuards(TenantOwnerGuard)
+  @ApiOperation({ summary: 'Get active subscription history (Owner only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Subscription history returned',
+  })
+  getSubscriptionHistory(@Param('tenantId') tenantId: string) {
+    return this.billingService.getSubscriptionHistory(tenantId);
+  }
+
   @Post('tenants/:tenantId/billing/cancel')
   @UseGuards(TenantOwnerGuard)
   @ApiOperation({ summary: 'Cancel active subscription (Owner only)' })
@@ -213,5 +224,16 @@ export class BillingController {
   })
   getInvoiceById(@Param('tenantId') tenantId: string, @Param('id') id: string) {
     return this.billingService.getInvoiceById(tenantId, id);
+  }
+
+  @Post('tenants/:tenantId/billing/invoices/:id/generate-pdf')
+  @UseGuards(TenantOwnerGuard)
+  @ApiOperation({ summary: 'Generate PDF for an invoice (Owner only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'PDF generated and URL returned',
+  })
+  generateInvoicePdf(@Param('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.billingService.generateInvoicePdf(tenantId, id);
   }
 }

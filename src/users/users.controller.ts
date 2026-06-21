@@ -9,6 +9,8 @@ import {
   Patch,
   Post,
   Query,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -16,14 +18,16 @@ import {
   ApiOperation,
   ApiResponse,
   ApiTags,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PaginationQueryDto } from '../common/pagination';
 import { ResponseMessage } from '../common/response';
-import { CreateUserDto, UpdateUserDto } from './dto';
+import { CreateUserDto, UpdateUserDto, UpdateProfileDto } from './dto';
 import { UsersService } from './users.service';
+import { FastifyFileInterceptor } from '../common/interceptors/fastify-file.interceptor';
 
 @ApiTags('Users')
 @ApiBearerAuth('JWT')
@@ -106,6 +110,24 @@ export class UsersController {
   })
   async getUsers(@Query() query: PaginationQueryDto, @CurrentUser() user: any) {
     return this.usersService.getUsers(query, user);
+  }
+
+  @Patch('me/profile')
+  @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Profile updated successfully')
+  @ApiOperation({ summary: 'Update your own profile, including avatar upload via multipart/form-data' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FastifyFileInterceptor)
+  @ApiResponse({
+    status: 200,
+    description: 'Profile updated successfully',
+  })
+  async updateProfile(
+    @Body() dto: UpdateProfileDto,
+    @CurrentUser() user: any,
+    @UploadedFile() file?: any,
+  ) {
+    return this.usersService.updateProfile(user.userId || user.id, dto, file);
   }
 
   @Get(':id')

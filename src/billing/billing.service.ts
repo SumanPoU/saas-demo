@@ -2,13 +2,19 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePlanDto, UpdatePlanDto, SubscribeDto } from './dto/billing.dto';
+import { MediaService } from '../media/media.service';
+import * as PDFDocument from 'pdfkit';
 
 @Injectable()
 export class BillingService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mediaService: MediaService,
+  ) {}
 
   // --- Plans ---
   async createPlan(dto: CreatePlanDto) {
@@ -49,21 +55,37 @@ export class BillingService {
 
     // Soft logic: cancel existing active subscription
     await this.prisma.subscription.updateMany({
-      where: { tenantId, status: 'ACTIVE' },
-      data: { status: 'CANCELED', canceledAt: new Date() },
+      where: { tenantId, status: { in: ['ACTIVE', 'TRIALING'] } },
+      data: { status: 'CANCELED', canceledAt: new Date(), cancelAtPeriodEnd: true },
     });
 
-    const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + 1); // defaulting to monthly
+    const isTrial = true; // Simplified: usually based on tenant history or plan settings
+    const startDate = new Date();
+    
+    let trialEnd: Date | null = null;
+    let currentPeriodStart = startDate;
+    let currentPeriodEnd = new Date(startDate);
+    currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1); // defaulting to monthly
+
+    if (isTrial) {
+      trialEnd = new Date(startDate);
+      trialEnd.setDate(trialEnd.getDate() + 14); // 14-day trial
+      currentPeriodStart = trialEnd;
+      currentPeriodEnd = new Date(trialEnd);
+      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+    }
 
     const subscription = await this.prisma.subscription.create({
       data: {
         tenantId,
         planId: dto.planId,
-        status: 'ACTIVE',
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: endDate,
+        status: isTrial ? 'TRIALING' : 'ACTIVE',
+        trialStart: isTrial ? startDate : null,
+        trialEnd: trialEnd,
+        currentPeriodStart,
+        currentPeriodEnd,
         billingInterval: 'MONTHLY',
+        cancelAtPeriodEnd: false,
       },
     });
 
@@ -71,12 +93,20 @@ export class BillingService {
       data: {
         subscriptionId: subscription.id,
         previousStatus: 'TRIALING',
-        newStatus: 'ACTIVE',
+        newStatus: subscription.status,
         reason: `Subscribed to ${plan.name}`,
       },
     });
 
     return subscription;
+  }
+
+  async getSubscriptionHistory(tenantId: string) {
+    const sub = await this.getSubscription(tenantId);
+    return this.prisma.subscriptionHistory.findMany({
+      where: { subscriptionId: sub.id },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async getSubscription(tenantId: string) {
@@ -122,5 +152,49 @@ export class BillingService {
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
     return invoice;
+  }
+
+  /**
+   * Generates a PDF invoice and uploads it via MediaService
+   */
+  async generateInvoicePdf(tenantId: string, invoiceId: string) {
+    const invoice = await this.getInvoiceById(tenantId, invoiceId);
+    
+    // Generate PDF
+    const doc = new PDFDocument();
+    const buffers: Buffer[] = [];
+    doc.on('data', buffers.push.bind(buffers));
+    
+    doc.fontSize(25).text('Invoice', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(14).text(`Invoice ID: ${invoice.id}`);
+    doc.text(`Status: ${invoice.status}`);
+    doc.text(`Amount Due: ${invoice.amountDue} ${invoice.currency}`);
+    doc.text(`Date: ${invoice.createdAt.toISOString()}`);
+    doc.end();
+
+    const pdfBuffer = await new Promise<Buffer>((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+    });
+
+    // Upload via MediaService
+    const mediaFile = await this.mediaService.uploadFile({
+      buffer: pdfBuffer,
+      originalName: `invoice-${invoiceId}.pdf`,
+      mimeType: 'application/pdf',
+      size: pdfBuffer.length,
+      tenantId,
+      purpose: 'INVOICE_PDF',
+    });
+
+    // Update invoice record
+    const updatedInvoice = await this.prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        invoicePdf: mediaFile.bucketName + '/' + mediaFile.storagePath,
+      },
+    });
+
+    return updatedInvoice;
   }
 }

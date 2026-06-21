@@ -22,6 +22,16 @@ export class TenantMembersService {
     private usersService: UsersService,
   ) {}
 
+  /**
+   * Invites a new user to the tenant workspace.
+   * Validates if the user is already a member before generating
+   * an invitation token and creating a TenantInvitation record.
+   * 
+   * @param tenantId The unique identifier of the tenant
+   * @param dto Data Transfer Object containing email and roleId
+   * @param inviterId The ID of the user sending the invitation
+   * @returns An object containing the success message and token
+   */
   async inviteMember(
     tenantId: string,
     dto: InviteMemberDto,
@@ -71,6 +81,16 @@ export class TenantMembersService {
     };
   }
 
+  /**
+   * Accepts a pending workspace invitation using a valid token.
+   * If the user doesn't exist, a placeholder account is created.
+   * Upon success, creates a TenantMembership and removes the invitation.
+   * 
+   * @param dto DTO containing the invitation token
+   * @returns The created TenantMembership
+   * @throws NotFoundException if the token is invalid
+   * @throws BadRequestException if the token is expired
+   */
   async acceptInvitation(dto: AcceptInvitationDto) {
     const invitation = await this.prisma.tenantInvitation.findUnique({
       where: { tokenHash: dto.token },

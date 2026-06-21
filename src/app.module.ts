@@ -29,6 +29,9 @@ import { GlobalConfigModule } from './global-config/global-config.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { TenantMembersModule } from './tenant-members/tenant-members.module';
 import { BillingModule } from './billing/billing.module';
+import { MediaModule } from './media/media.module';
+import { LimitsModule } from './limits/limits.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 
 @Module({
   imports: [
@@ -52,6 +55,9 @@ import { BillingModule } from './billing/billing.module';
     TenantsModule,
     TenantMembersModule,
     BillingModule,
+    MediaModule,
+    LimitsModule,
+    FeatureFlagsModule,
     MailModule,
     CommonModule,
     ThrottlerModule.forRootAsync({

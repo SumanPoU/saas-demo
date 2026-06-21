@@ -13,6 +13,7 @@ import {
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from '@fastify/helmet';
 import compression from '@fastify/compress';
+import fastifyMultipart from '@fastify/multipart';
 import { AppModule } from './app.module';
 import {
   ResponseInterceptor,
@@ -42,6 +43,13 @@ async function bootstrap() {
   await app.register(compression, {
     encodings: ['gzip', 'deflate'],
     threshold: 1024,
+  });
+
+  // 4b. Multipart plugin
+  await app.register(fastifyMultipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
   });
 
   // 5. CORS

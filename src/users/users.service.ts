@@ -11,7 +11,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaginationService, PaginationQueryDto } from '../common/pagination';
 import { MailService } from '../mail/mail.service';
 import { RuntimeConfigService } from '../config/runtime-config.service';
-import { CreateUserDto, UpdateUserDto } from './dto';
+import { MediaService } from '../media/media.service';
+import { CreateUserDto, UpdateUserDto, UpdateProfileDto } from './dto';
 
 const safeUserSelect = {
   id: true,
@@ -43,6 +44,7 @@ export class UsersService {
     private readonly pagination: PaginationService,
     private readonly mailService: MailService,
     private readonly runtimeConfig: RuntimeConfigService,
+    private readonly mediaService: MediaService,
   ) {}
 
   private generateTemporaryPassword() {
@@ -180,6 +182,34 @@ export class UsersService {
     return this.prisma.user.update({
       where: { id },
       data: dto,
+      select: safeUserSelect,
+    });
+  }
+
+  async updateProfile(id: string, dto: UpdateProfileDto, file?: any) {
+    let avatarUrl = undefined;
+
+    if (file) {
+      const mediaFile = await this.mediaService.uploadFile({
+        buffer: file.buffer,
+        originalName: file.originalname || file.filename,
+        mimeType: file.mimetype,
+        size: file.size || file.buffer.length,
+        tenantId: null, // User avatar is platform-level
+        purpose: 'AVATAR',
+        uploadedById: id,
+      });
+      avatarUrl = mediaFile.bucketName + '/' + mediaFile.storagePath;
+    }
+
+    const dataToUpdate: Prisma.UserUpdateInput = {};
+    if (dto.firstName !== undefined) dataToUpdate.firstName = dto.firstName;
+    if (dto.lastName !== undefined) dataToUpdate.lastName = dto.lastName;
+    if (avatarUrl) dataToUpdate.avatarUrl = avatarUrl;
+
+    return this.prisma.user.update({
+      where: { id },
+      data: dataToUpdate,
       select: safeUserSelect,
     });
   }
