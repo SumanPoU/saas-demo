@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import * as Minio from 'minio';
@@ -9,7 +14,7 @@ export interface UploadFileOptions {
   buffer: Buffer;
   originalName: string;
   mimeType: string;
-  size: Int;
+  size: number;
   tenantId?: string;
   uploadedById?: string;
   purpose?: string;
@@ -26,13 +31,17 @@ export class MediaService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    const endPoint = this.configService.get<string>('MINIO_ENDPOINT') || 'localhost';
+    const endPoint =
+      this.configService.get<string>('MINIO_ENDPOINT') || 'localhost';
     const port = this.configService.get<number>('MINIO_PORT') || 9000;
-    const accessKey = this.configService.get<string>('MINIO_ACCESS_KEY') || 'minioadmin';
-    const secretKey = this.configService.get<string>('MINIO_SECRET_KEY') || 'minioadmin';
+    const accessKey =
+      this.configService.get<string>('MINIO_ACCESS_KEY') || 'minioadmin';
+    const secretKey =
+      this.configService.get<string>('MINIO_SECRET_KEY') || 'minioadmin';
     const useSSL = this.configService.get<string>('MINIO_USE_SSL') === 'true';
 
-    this.bucketName = this.configService.get<string>('MINIO_BUCKET_NAME') || 'my-app-uploads';
+    this.bucketName =
+      this.configService.get<string>('MINIO_BUCKET_NAME') || 'my-app-uploads';
 
     this.minioClient = new Minio.Client({
       endPoint,
@@ -49,12 +58,15 @@ export class MediaService implements OnModuleInit {
       if (!exists) {
         await this.minioClient.makeBucket(this.bucketName, 'us-east-1');
         this.logger.log(`Created MinIO bucket: ${this.bucketName}`);
-        
+
         // Make bucket public if we want objects to be readable without presigned URLs
         // Note: For a secure SaaS, we usually use presigned URLs or a proxy, but we'll set it private
       }
     } catch (err) {
-      this.logger.error(`MinIO initialization failed: ${err.message}`, err.stack);
+      this.logger.error(
+        `MinIO initialization failed: ${err.message}`,
+        err.stack,
+      );
     }
   }
 
@@ -62,13 +74,22 @@ export class MediaService implements OnModuleInit {
    * Upload a file to MinIO and track it in Prisma
    */
   async uploadFile(options: UploadFileOptions) {
-    const { buffer, originalName, mimeType, size, tenantId, uploadedById, purpose, isPublic } = options;
-    
+    const {
+      buffer,
+      originalName,
+      mimeType,
+      size,
+      tenantId,
+      uploadedById,
+      purpose,
+      isPublic,
+    } = options;
+
     // Construct storage path
     const fileId = crypto.randomUUID();
     const ext = path.extname(originalName);
     const safePurpose = (purpose || 'misc').toLowerCase();
-    
+
     let storagePath = '';
     if (tenantId) {
       storagePath = `tenants/${tenantId}/${safePurpose}/${fileId}${ext}`;
@@ -83,7 +104,7 @@ export class MediaService implements OnModuleInit {
         storagePath,
         buffer,
         Number(size),
-        { 'Content-Type': mimeType }
+        { 'Content-Type': mimeType },
       );
 
       // Track in database
@@ -104,7 +125,10 @@ export class MediaService implements OnModuleInit {
 
       return mediaFile;
     } catch (error) {
-      this.logger.error(`Failed to upload file ${originalName}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to upload file ${originalName}: ${error.message}`,
+        error.stack,
+      );
       throw new InternalServerErrorException('Failed to upload file');
     }
   }
@@ -124,7 +148,7 @@ export class MediaService implements OnModuleInit {
     return this.minioClient.presignedGetObject(
       mediaFile.bucketName,
       mediaFile.storagePath,
-      expiresInSecs
+      expiresInSecs,
     );
   }
 
@@ -139,14 +163,19 @@ export class MediaService implements OnModuleInit {
     if (!mediaFile) return;
 
     try {
-      await this.minioClient.removeObject(mediaFile.bucketName, mediaFile.storagePath);
-      
+      await this.minioClient.removeObject(
+        mediaFile.bucketName,
+        mediaFile.storagePath,
+      );
+
       await this.prisma.mediaFile.update({
         where: { id: mediaFileId },
         data: { deletedAt: new Date() },
       });
     } catch (error) {
-      this.logger.error(`Failed to delete file ${mediaFile.storagePath}: ${error.message}`);
+      this.logger.error(
+        `Failed to delete file ${mediaFile.storagePath}: ${error.message}`,
+      );
       throw new InternalServerErrorException('Failed to delete file');
     }
   }

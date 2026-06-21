@@ -1,5 +1,20 @@
-import { Controller, Post, Get, Param, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { MediaService } from './media.service';
 import { TenantMemberGuard } from '../auth/guards/tenant-member.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -15,7 +30,7 @@ export class MediaController {
   // For standard NestJS with Express, FileInterceptor('file') from @nestjs/platform-express is used
   // Since this project uses fastify, we expect the route to be mapped using fastify multipart or a custom interceptor.
   // Assuming a custom interceptor or request handling for file uploads is set up:
-  
+
   @Post('upload')
   @ApiOperation({ summary: 'Upload a file to the tenant workspace' })
   @ApiConsumes('multipart/form-data')
@@ -30,7 +45,7 @@ export class MediaController {
         purpose: {
           type: 'string',
           example: 'ATTACHMENT',
-        }
+        },
       },
     },
   })
@@ -41,7 +56,7 @@ export class MediaController {
     @Param('purpose') purpose?: string,
   ) {
     if (!file) throw new BadRequestException('File is required');
-    
+
     return this.mediaService.uploadFile({
       buffer: file.buffer,
       originalName: file.originalname,

@@ -15,7 +15,12 @@ export class LimitsService {
     try {
       const now = new Date();
       // Track usage by hour
-      const windowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours());
+      const windowStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        now.getHours(),
+      );
       const windowEnd = new Date(windowStart.getTime() + 60 * 60 * 1000);
 
       // Default hourly limit
@@ -62,7 +67,7 @@ export class LimitsService {
             wasBlocked: true,
           },
         });
-        
+
         return { exceeded: true };
       }
 

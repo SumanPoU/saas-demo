@@ -96,7 +96,7 @@ describe('RolesService', () => {
     prisma.user.count.mockResolvedValue(3);
 
     await expect(
-      service.deleteRole('role-1', { id: 'admin-1' }),
+      service.deleteRole('role-1'),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.role.delete).not.toHaveBeenCalled();

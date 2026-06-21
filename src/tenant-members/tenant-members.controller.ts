@@ -34,7 +34,7 @@ export class TenantMembersController {
    * Endpoint to invite a new user to a specific tenant workspace.
    * Access is restricted to Tenant Owners.
    * Sends an email invitation asynchronously.
-   * 
+   *
    * @param tenantId UUID of the target workspace
    * @param dto Contains email and role assigned to the new invitee
    * @param user The owner user executing the invite
@@ -77,7 +77,7 @@ export class TenantMembersController {
    * Endpoint for users to accept a workspace invitation via the token
    * received in their email. Converts a pending TenantInvitation into
    * an active TenantMembership.
-   * 
+   *
    * @param dto Payload containing the unique invitation token
    */
   @Post('auth/invitations/accept')

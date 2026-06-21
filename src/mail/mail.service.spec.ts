@@ -16,7 +16,11 @@ describe('MailService', () => {
         };
         return values[key];
       }),
-    } as unknown as ConfigService);
+    } as unknown as ConfigService,
+    {
+      getString: jest.fn(),
+      getNumber: jest.fn(),
+    } as any);
   });
 
   it('sends temporary password email through the common sendEmail helper', async () => {

@@ -11,6 +11,7 @@ describe('UsersService', () => {
   let pagination: any;
   let mailService: any;
   let runtimeConfig: any;
+  let mediaService: any;
 
   const safeUser = {
     id: 'user-1',
@@ -53,8 +54,11 @@ describe('UsersService', () => {
     runtimeConfig = {
       getBcryptSaltRounds: jest.fn().mockResolvedValue(10),
     };
+    mediaService = {
+      uploadFile: jest.fn(),
+    };
 
-    service = new UsersService(prisma, pagination, mailService, runtimeConfig);
+    service = new UsersService(prisma, pagination, mailService, runtimeConfig, mediaService);
   });
 
   it('creates a user with a generated temporary password and requires password change', async () => {

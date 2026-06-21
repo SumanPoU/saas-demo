@@ -14,10 +14,10 @@ export class UpdateProfileDto {
   @MaxLength(50)
   lastName?: string;
 
-  @ApiPropertyOptional({ 
-    type: 'string', 
-    format: 'binary', 
-    description: 'Avatar image file' 
+  @ApiPropertyOptional({
+    type: 'string',
+    format: 'binary',
+    description: 'Avatar image file',
   })
   @IsOptional()
   avatar?: any;

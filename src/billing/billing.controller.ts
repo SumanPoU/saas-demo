@@ -233,7 +233,10 @@ export class BillingController {
     status: 200,
     description: 'PDF generated and URL returned',
   })
-  generateInvoicePdf(@Param('tenantId') tenantId: string, @Param('id') id: string) {
+  generateInvoicePdf(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+  ) {
     return this.billingService.generateInvoicePdf(tenantId, id);
   }
 }

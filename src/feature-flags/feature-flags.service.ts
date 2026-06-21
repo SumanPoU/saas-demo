@@ -20,11 +20,8 @@ export class FeatureFlagsService {
     const overrides = await this.prisma.featureFlagOverride.findMany({
       where: {
         tenantId,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } }
-        ]
-      }
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
     });
 
     // Merge plan flags and overrides
@@ -41,7 +38,14 @@ export class FeatureFlagsService {
   /**
    * Set a feature flag override for a tenant
    */
-  async setOverride(tenantId: string, flagKey: string, flagValue: any, setBy: string, reason?: string, expiresAt?: Date) {
+  async setOverride(
+    tenantId: string,
+    flagKey: string,
+    flagValue: any,
+    setBy: string,
+    reason?: string,
+    expiresAt?: Date,
+  ) {
     return this.prisma.featureFlagOverride.upsert({
       where: {
         tenantId_flagKey: {
@@ -73,8 +77,8 @@ export class FeatureFlagsService {
     try {
       await this.prisma.featureFlagOverride.delete({
         where: {
-          tenantId_flagKey: { tenantId, flagKey }
-        }
+          tenantId_flagKey: { tenantId, flagKey },
+        },
       });
     } catch (e) {
       // Ignore if it doesn't exist

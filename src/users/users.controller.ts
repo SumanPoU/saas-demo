@@ -115,7 +115,10 @@ export class UsersController {
   @Patch('me/profile')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Profile updated successfully')
-  @ApiOperation({ summary: 'Update your own profile, including avatar upload via multipart/form-data' })
+  @ApiOperation({
+    summary:
+      'Update your own profile, including avatar upload via multipart/form-data',
+  })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FastifyFileInterceptor)
   @ApiResponse({

@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePlanDto, UpdatePlanDto, SubscribeDto } from './dto/billing.dto';
 import { MediaService } from '../media/media.service';
-import * as PDFDocument from 'pdfkit';
+import PDFDocument = require('pdfkit');
 
 @Injectable()
 export class BillingService {
@@ -56,12 +56,16 @@ export class BillingService {
     // Soft logic: cancel existing active subscription
     await this.prisma.subscription.updateMany({
       where: { tenantId, status: { in: ['ACTIVE', 'TRIALING'] } },
-      data: { status: 'CANCELED', canceledAt: new Date(), cancelAtPeriodEnd: true },
+      data: {
+        status: 'CANCELED',
+        canceledAt: new Date(),
+        cancelAtPeriodEnd: true,
+      },
     });
 
     const isTrial = true; // Simplified: usually based on tenant history or plan settings
     const startDate = new Date();
-    
+
     let trialEnd: Date | null = null;
     let currentPeriodStart = startDate;
     let currentPeriodEnd = new Date(startDate);
@@ -159,12 +163,12 @@ export class BillingService {
    */
   async generateInvoicePdf(tenantId: string, invoiceId: string) {
     const invoice = await this.getInvoiceById(tenantId, invoiceId);
-    
+
     // Generate PDF
     const doc = new PDFDocument();
     const buffers: Buffer[] = [];
     doc.on('data', buffers.push.bind(buffers));
-    
+
     doc.fontSize(25).text('Invoice', { align: 'center' });
     doc.moveDown();
     doc.fontSize(14).text(`Invoice ID: ${invoice.id}`);

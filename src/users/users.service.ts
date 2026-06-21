@@ -187,7 +187,7 @@ export class UsersService {
   }
 
   async updateProfile(id: string, dto: UpdateProfileDto, file?: any) {
-    let avatarUrl = undefined;
+    let avatarUrl: string | undefined = undefined;
 
     if (file) {
       const mediaFile = await this.mediaService.uploadFile({
@@ -195,7 +195,7 @@ export class UsersService {
         originalName: file.originalname || file.filename,
         mimeType: file.mimetype,
         size: file.size || file.buffer.length,
-        tenantId: null, // User avatar is platform-level
+        tenantId: undefined, // User avatar is platform-level
         purpose: 'AVATAR',
         uploadedById: id,
       });
