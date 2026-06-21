@@ -1,0 +1,33 @@
+$kind: http-request
+description: "Admin creates a user. Do not send a password: the API generates a temporary password, emails it to the user, and sets mustChangePassword=true."
+url: "{{baseUrl}}/v1/users"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "{{createdUserEmail}}",
+      "username": "{{createdUserUsername}}",
+      "firstName": "Created",
+      "lastName": "User",
+      "roleIds": [],
+      "isActive": true
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      const response = pm.response.json();
+      const data = response.data || response;
+      if (pm.response.code === 201 && data && data.id) {
+          pm.environment.set("userId", data.id);
+          pm.environment.set("createdUserEmail", data.email || pm.environment.get("createdUserEmail"));
+          pm.environment.set("loginIdentifier", data.email || data.username || pm.environment.get("loginIdentifier"));
+          console.log("Created user captured as userId. Temporary password is sent by email; paste it into temporaryPassword/loginPassword before temp login.");
+      }
+order: 1000

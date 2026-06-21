@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants/:tenantId/billing/subscribe"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: tenantId
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "planId": "<string>"
+    }
+examples: ./.resources/Subscribe to a plan (Owner only).resources/examples
+order: 1000

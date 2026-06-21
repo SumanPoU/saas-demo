@@ -1,0 +1,18 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/global-config/:key"
+  method: GET
+  pathVariables:
+    - key: key
+      value: throttle
+      description: (Required)  (This can only be one of bcrypt,throttle,jwt,app,mail,auth_settings,system_branding)
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  body:
+    type: text
+    content: ""
+order: 1000

@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/roles/:id/users"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "userIds": [
+        "<string>",
+        "<string>"
+      ]
+    }
+examples: ./.resources/Assign a role to one or more users.resources/examples
+order: 1000

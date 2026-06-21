@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/roles/:id/permissions"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "permissionIds": [
+        "<string>",
+        "<string>"
+      ]
+    }
+examples: ./.resources/Assign one or more permissions to a role.resources/examples
+order: 1000

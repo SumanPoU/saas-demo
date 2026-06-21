@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants/:id"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "name": "<string>",
+      "slug": "<string>",
+      "settings": {}
+    }
+examples: ./.resources/Update workspace settings (Owner only).resources/examples
+order: 2000

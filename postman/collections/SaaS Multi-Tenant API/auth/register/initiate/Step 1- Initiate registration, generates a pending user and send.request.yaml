@@ -1,0 +1,17 @@
+$kind: http-request
+name: "Step 1: Initiate registration, generates a pending user and sends an email verification OTP"
+url: "{{baseUrl}}/auth/register/initiate"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "<string>",
+      "firstName": "<string>",
+      "lastName": "<string>"
+    }
+examples: ./.resources/Step 1- Initiate registration, generates a pending user and send.resources/examples
+order: 1000

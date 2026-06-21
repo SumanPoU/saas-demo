@@ -1,0 +1,19 @@
+$kind: http-request
+description: Detaches the role from a specific user or list of users, reducing their access privileges.
+url: "{{baseUrl}}/v1/roles/{{roleId}}/users"
+method: DELETE
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "userIds": [
+        "{{userId}}"
+      ]
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 8000

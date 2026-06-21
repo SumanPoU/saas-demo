@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/permissions/:id/groups"
+method: DELETE
+headers:
+  Content-Type: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "groupIds": [
+        "<string>",
+        "<string>"
+      ]
+    }
+examples: ./.resources/Remove a permission from one or more groups.resources/examples
+order: 2000

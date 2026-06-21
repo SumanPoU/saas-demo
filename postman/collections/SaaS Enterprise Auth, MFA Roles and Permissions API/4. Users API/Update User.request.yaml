@@ -1,0 +1,19 @@
+$kind: http-request
+description: Updates user information such as name, active status, or roles. Used by administrators to manage accounts.
+url: "{{baseUrl}}/v1/users/{{userId}}"
+method: PATCH
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "firstName": "Updated",
+      "lastName": "User",
+      "isActive": true
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 4000

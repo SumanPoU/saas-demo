@@ -1,0 +1,12 @@
+$kind: http-request
+description: Retrieves users with pagination and optional search.
+url: "{{baseUrl}}/v1/users?page=1&limit=25"
+method: GET
+queryParams:
+  page: "1"
+  limit: "25"
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 2000

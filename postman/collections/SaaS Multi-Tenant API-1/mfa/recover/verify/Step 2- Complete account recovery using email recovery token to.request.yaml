@@ -1,0 +1,14 @@
+$kind: http-request
+name: "Step 2: Complete account recovery using email recovery token to disable MFA"
+url: "{{baseUrl}}/mfa/recover/verify"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "token": "<string>"
+    }
+examples: ./.resources/Step 2- Complete account recovery using email recovery token to.resources/examples
+order: 1000

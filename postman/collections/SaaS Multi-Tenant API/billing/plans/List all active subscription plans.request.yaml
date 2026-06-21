@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/billing/plans"
+method: GET
+headers:
+  Accept: application/json
+body:
+  type: text
+  content: ""
+examples: ./.resources/List all active subscription plans.resources/examples
+order: 2000

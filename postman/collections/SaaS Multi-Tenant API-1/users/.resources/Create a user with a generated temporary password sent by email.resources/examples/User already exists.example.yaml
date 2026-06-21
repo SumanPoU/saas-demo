@@ -1,0 +1,27 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/users"
+  method: POST
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "email": "<string>",
+        "username": "<string>",
+        "firstName": "<string>",
+        "lastName": "<string>",
+        "roleIds": [
+          "<string>",
+          "<string>"
+        ],
+        "isActive": "<boolean>"
+      }
+response:
+  statusCode: 409
+  statusText: Conflict
+  body:
+    type: text
+    content: ""
+order: 3000

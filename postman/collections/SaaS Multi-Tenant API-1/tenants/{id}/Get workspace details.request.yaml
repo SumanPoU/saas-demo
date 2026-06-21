@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants/:id"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get workspace details.resources/examples
+order: 1000

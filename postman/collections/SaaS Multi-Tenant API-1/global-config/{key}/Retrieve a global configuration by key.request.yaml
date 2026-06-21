@@ -1,0 +1,13 @@
+$kind: http-request
+description: Use keys such as bcrypt, throttle, jwt, app, mail, auth_settings, or system_branding.
+url: "{{baseUrl}}/global-config/:key"
+method: GET
+pathVariables:
+  - key: key
+    value: throttle
+    description: (Required)  (This can only be one of bcrypt,throttle,jwt,app,mail,auth_settings,system_branding)
+body:
+  type: text
+  content: ""
+examples: ./.resources/Retrieve a global configuration by key.resources/examples
+order: 1000

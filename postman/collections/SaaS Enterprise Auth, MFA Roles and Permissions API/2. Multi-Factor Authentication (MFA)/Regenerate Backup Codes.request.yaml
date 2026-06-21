@@ -1,0 +1,17 @@
+$kind: http-request
+description: Requires a valid TOTP code to confirm authorization, purges old backup codes, and returns 8 fresh new ones.
+url: "{{baseUrl}}/v1/mfa/backup-codes/regenerate"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "{{totpCode}}"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 5000

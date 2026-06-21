@@ -1,0 +1,9 @@
+$kind: http-request
+description: "MFA Step 1: Protected JWT request to initiate TOTP setup. Encrypts the derived base32 secret in the database and returns a Base64 encoded QR Code data URL."
+url: "{{baseUrl}}/v1/mfa/setup"
+method: POST
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 1000

@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants/:tenantId/members/:userId"
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: tenantId
+    value: <string>
+    description: "(Required) "
+  - key: userId
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Remove a member from the workspace (Owner only).resources/examples
+order: 2000

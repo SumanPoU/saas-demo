@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/mfa/backup-codes/regenerate"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "code": "<string>"
+    }
+examples: ./.resources/Regenerate backup codes, revokes existing backup codes.resources/examples
+order: 1000

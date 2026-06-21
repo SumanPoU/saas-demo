@@ -1,0 +1,9 @@
+$kind: http-request
+description: Admin soft-deletes userId by setting isActive=false and revoking sessions. The current authenticated admin cannot delete their own account.
+url: "{{baseUrl}}/v1/users/{{userId}}"
+method: DELETE
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 6000

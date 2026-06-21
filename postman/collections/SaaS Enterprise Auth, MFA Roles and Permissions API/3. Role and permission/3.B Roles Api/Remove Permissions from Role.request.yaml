@@ -1,0 +1,19 @@
+$kind: http-request
+description: Revokes specific permissions from a role.
+url: "{{baseUrl}}/v1/roles/{{roleId}}/permissions"
+method: DELETE
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "permissionIds": [
+        "{{permissionId}}"
+      ]
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 6000

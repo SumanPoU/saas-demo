@@ -1,0 +1,30 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/tenants/:tenantId/members/:userId"
+  method: PATCH
+  headers:
+    Content-Type: application/json
+    Accept: application/json
+  pathVariables:
+    - key: tenantId
+      value: <string>
+      description: "(Required) "
+    - key: userId
+      value: <string>
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "isOwner": "<boolean>",
+        "roleId": "<string>"
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: ""
+order: 1000

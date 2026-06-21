@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/mfa/verify-login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "mfaPendingToken": "<string>",
+      "code": "<string>"
+    }
+examples: ./.resources/Complete login using a TOTP code or a single-use backup code.resources/examples
+order: 1000

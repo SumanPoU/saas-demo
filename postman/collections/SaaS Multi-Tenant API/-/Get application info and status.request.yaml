@@ -1,0 +1,9 @@
+$kind: http-request
+name: Get application info and status
+url: "{{baseUrl}}"
+method: GET
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get application info and status.resources/examples
+order: 1000

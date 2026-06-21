@@ -1,0 +1,19 @@
+$kind: http-request
+description: Assigns an existing permission to one or more permission groups.
+url: "{{baseUrl}}/v1/permissions/{{permissionId}}/groups"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "groupIds": [
+        "{{permissionGroupId}}"
+      ]
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 5000

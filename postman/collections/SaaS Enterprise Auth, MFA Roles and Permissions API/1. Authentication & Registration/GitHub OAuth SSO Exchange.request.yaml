@@ -1,0 +1,23 @@
+$kind: http-request
+description: GitHub Single Sign-On (SSO) OAuth callback code exchange with auto-registration, multi-provider mapping linking, and mock bypass flags for offline local dev tests.
+url: "{{baseUrl}}/v1/auth/oauth/github"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "mock-github-code",
+      "state": "xyz123",
+      "expectedState": "xyz123"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const response = pm.response.json();
+      if (pm.response.code === 200 && response.success && response.data && response.data.tokens) {
+          pm.environment.set("accessToken", response.data.tokens.accessToken);
+          pm.environment.set("refreshToken", response.data.tokens.refreshToken);
+      }
+order: 15000

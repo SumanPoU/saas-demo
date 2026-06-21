@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/permissions/:id"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Retrieve a single permission by ID.resources/examples
+order: 1000

@@ -1,0 +1,16 @@
+$kind: http-request
+name: Soft-delete a user by deactivating the account and revoking sessions
+description: This endpoint deactivates the account instead of removing the database row. A user cannot delete their own account.
+url: "{{baseUrl}}/users/:id"
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Soft-delete a user by deactivating the account and revoking sess.resources/examples
+order: 3000

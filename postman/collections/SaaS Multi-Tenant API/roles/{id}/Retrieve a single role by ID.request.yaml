@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/roles/:id"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Retrieve a single role by ID.resources/examples
+order: 1000

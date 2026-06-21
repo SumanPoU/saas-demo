@@ -1,0 +1,20 @@
+$kind: http-example
+name: Invalid/expired token or reuse security violation
+request:
+  url: "{{baseUrl}}/auth/refresh"
+  method: POST
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "refreshToken": "<string>"
+      }
+response:
+  statusCode: 401
+  statusText: Unauthorized
+  body:
+    type: text
+    content: ""
+order: 2000

@@ -1,0 +1,14 @@
+$kind: http-request
+name: "MFA Account Recovery Step 1: Request Link"
+description: Step 1 of MFA account recovery. Generates a secure recovery token and dispatches an email containing the link to disable MFA (preventing user enumeration leaks).
+url: "{{baseUrl}}/v1/mfa/recover"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "test-mfa-user@example.com"
+    }
+order: 7000

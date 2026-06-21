@@ -1,0 +1,7 @@
+$kind: http-request
+description: Admin-only endpoint. Retrieves one global_config record by key. Runtime keys include bcrypt, throttle, jwt, app, and mail.
+url: "{{baseUrl}}/v1/global-config/app"
+method: GET
+headers:
+  Authorization: Bearer {{accessToken}}
+order: 3000

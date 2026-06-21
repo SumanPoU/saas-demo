@@ -1,0 +1,27 @@
+$kind: http-request
+description: Creates a permission and stores permissionId.
+url: "{{baseUrl}}/v1/permissions"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "name": "reports:read:{{$timestamp}}",
+      "description": "Allows viewing reports."
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      const response = pm.response.json();
+      const data = response.data || response;
+      const value = data.id || response.id;
+      if (value) {
+          pm.environment.set("permissionId", value);
+      }
+order: 1000

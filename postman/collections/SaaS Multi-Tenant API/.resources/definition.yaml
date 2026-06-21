@@ -1,0 +1,4 @@
+$kind: collection
+description: Auto-generated OpenAPI specification for the SaaS Demo application.
+variables:
+  baseUrl: /

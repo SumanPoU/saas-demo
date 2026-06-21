@@ -1,0 +1,19 @@
+$kind: http-request
+description: Lists roles and captures the first custom role id.
+url: "{{baseUrl}}/v1/roles"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      const response = pm.response.json();
+      const data = response.data || response;
+      const items = data;
+      const item = Array.isArray(items) ? items.find((entry) => entry.name !== "SuperAdmin" && entry.name !== "Admin" && entry.name !== "User") : null;
+      if (item && item.id) {
+          pm.environment.set("roleId", item.id);
+      }
+order: 2000

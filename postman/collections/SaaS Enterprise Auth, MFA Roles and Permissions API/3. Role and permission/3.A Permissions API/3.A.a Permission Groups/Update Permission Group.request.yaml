@@ -1,0 +1,17 @@
+$kind: http-request
+description: Updates the name or description of an existing permission group.
+url: "{{baseUrl}}/v1/permissions/groups/{{permissionGroupId}}"
+method: PATCH
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "description": "Updated reporting and analytics permissions."
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 4000

@@ -1,0 +1,3 @@
+$kind: collection
+description: Permission group and permission endpoints protected by RBAC.
+order: 1000

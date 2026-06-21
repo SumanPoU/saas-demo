@@ -1,0 +1,11 @@
+$kind: http-request
+description: Creates a global_config record by key. Seeded runtime keys are bcrypt, throttle, jwt, app, and mail.
+url: "{{baseUrl}}/global-config"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: ""
+examples: ./.resources/Create a global configuration record.resources/examples
+order: 2000

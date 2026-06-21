@@ -1,0 +1,15 @@
+$kind: http-request
+name: "Step 1.5: Resend a fresh email verification OTP code"
+url: "{{baseUrl}}/auth/register/resend-otp"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "<string>"
+    }
+examples: ./.resources/Step 1.5- Resend a fresh email verification OTP code.resources/examples
+order: 1000

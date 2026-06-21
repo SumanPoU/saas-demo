@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/permissions/groups"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "<string>",
+      "description": "<string>"
+    }
+examples: ./.resources/Create a new permission group.resources/examples
+order: 1000

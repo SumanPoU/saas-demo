@@ -1,0 +1,2 @@
+$kind: collection
+description: Comprehensive Postman collection for testing the NestJS enterprise authentication system, including authentication and registration, MFA, roles, permissions, permission groups, users, and database-backed runtime settings.

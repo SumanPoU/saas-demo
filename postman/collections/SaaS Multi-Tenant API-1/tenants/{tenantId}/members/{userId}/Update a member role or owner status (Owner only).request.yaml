@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants/:tenantId/members/:userId"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: tenantId
+    value: <string>
+    description: "(Required) "
+  - key: userId
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "isOwner": "<boolean>",
+      "roleId": "<string>"
+    }
+examples: ./.resources/Update a member role or owner status (Owner only).resources/examples
+order: 1000

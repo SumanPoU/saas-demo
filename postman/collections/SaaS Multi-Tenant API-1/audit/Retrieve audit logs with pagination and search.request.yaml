@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/audit?page=1&limit=25&search=<string>"
+method: GET
+queryParams:
+  page: "1"
+  limit: "25"
+  search: <string>
+body:
+  type: text
+  content: ""
+examples: ./.resources/Retrieve audit logs with pagination and search.resources/examples
+order: 1000

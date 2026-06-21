@@ -1,0 +1,18 @@
+$kind: http-request
+description: Logout the active user session. Revokes the session in the database and invalidates associated refresh tokens.
+url: "{{baseUrl}}/v1/auth/logout"
+method: POST
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response.code === 200) {
+          pm.environment.set("accessToken", "");
+          pm.environment.set("refreshToken", "");
+          pm.environment.set("mfaPendingToken", "");
+          console.log("Cleared Postman tokens on logout complete.");
+      }
+order: 16000

@@ -1,0 +1,14 @@
+$kind: http-request
+name: "MFA Account Recovery Step 2: Confirm Link"
+description: Step 2 of MFA account recovery. Validates the emailed recovery link token, dispatches deactivation, and purges MFA settings on the user account.
+url: "{{baseUrl}}/v1/mfa/recover/verify"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "token": "{{mfaRecoveryToken}}"
+    }
+order: 8000

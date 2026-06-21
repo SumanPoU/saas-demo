@@ -61,7 +61,8 @@ async function bootstrap() {
     credentials: false,
   });
 
-  // 6. URL versioning
+  // 6. Global prefix and URL versioning
+  app.setGlobalPrefix('api');
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',

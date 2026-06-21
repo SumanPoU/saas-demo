@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants/:tenantId/billing/subscription"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: tenantId
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get active subscription details.resources/examples
+order: 1000

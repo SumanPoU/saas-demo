@@ -1,0 +1,19 @@
+$kind: http-request
+description: Assigns roleId to userId. Run Remove Role from Users before deleting the role.
+url: "{{baseUrl}}/v1/roles/{{roleId}}/users"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "userIds": [
+        "{{userId}}"
+      ]
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 7000

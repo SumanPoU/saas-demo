@@ -1,0 +1,9 @@
+$kind: http-request
+description: Retrieves detailed information about a specific role, including all its assigned permissions.
+url: "{{baseUrl}}/v1/roles/{{roleId}}"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 3000

@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/permissions/:id/groups"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "groupIds": [
+        "<string>",
+        "<string>"
+      ]
+    }
+examples: ./.resources/Assign a permission to one or more groups.resources/examples
+order: 1000

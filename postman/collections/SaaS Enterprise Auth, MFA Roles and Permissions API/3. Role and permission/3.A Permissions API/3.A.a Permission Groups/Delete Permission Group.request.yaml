@@ -1,0 +1,9 @@
+$kind: http-request
+description: Permanently removes a permission group from the system. Ensure no critical permissions are orphaned.
+url: "{{baseUrl}}/v1/permissions/groups/{{permissionGroupId}}"
+method: DELETE
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 5000

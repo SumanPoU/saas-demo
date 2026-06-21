@@ -1,0 +1,24 @@
+$kind: http-request
+description: Lists permissions and captures the first permission id when present.
+url: "{{baseUrl}}/v1/permissions?page=1&limit=25&search=ss"
+method: GET
+queryParams:
+  page: "1"
+  limit: "25"
+  search: ss
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      const response = pm.response.json();
+      const data = response.data || response;
+      const items = data;
+      const item = Array.isArray(items) ? items.find((entry) => true) : null;
+      if (item && item.id) {
+          pm.environment.set("permissionId", item.id);
+      }
+    language: text/javascript
+order: 2000

@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants/:id"
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Delete workspace (Owner only).resources/examples
+order: 3000

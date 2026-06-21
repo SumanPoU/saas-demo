@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/switch-tenant"
+method: POST
+headers:
+  Accept: application/json
+body:
+  type: text
+  content: ""
+examples: ./.resources/Switch the active tenant context for this session.resources/examples
+order: 1000

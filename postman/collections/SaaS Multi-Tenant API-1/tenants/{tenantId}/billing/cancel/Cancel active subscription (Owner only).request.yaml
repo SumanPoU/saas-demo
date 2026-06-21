@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants/:tenantId/billing/cancel"
+method: POST
+headers:
+  Accept: application/json
+pathVariables:
+  - key: tenantId
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Cancel active subscription (Owner only).resources/examples
+order: 1000

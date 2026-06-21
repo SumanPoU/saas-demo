@@ -1,0 +1,3 @@
+$kind: collection
+description: Role and permission management endpoints. Run Standard Credentials Login in 1. Authentication & Registration first; these requests reuse the shared accessToken environment variable.
+order: 3000

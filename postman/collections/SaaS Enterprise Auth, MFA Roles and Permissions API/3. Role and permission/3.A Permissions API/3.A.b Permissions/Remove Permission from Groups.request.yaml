@@ -1,0 +1,19 @@
+$kind: http-request
+description: Unlinks a permission from the specified permission groups.
+url: "{{baseUrl}}/v1/permissions/{{permissionId}}/groups"
+method: DELETE
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "groupIds": [
+        "{{permissionGroupId}}"
+      ]
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 6000

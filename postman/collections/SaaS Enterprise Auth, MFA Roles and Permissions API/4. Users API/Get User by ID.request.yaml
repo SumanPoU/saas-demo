@@ -1,0 +1,9 @@
+$kind: http-request
+description: Retrieves the complete profile and state of a specific user.
+url: "{{baseUrl}}/v1/users/{{userId}}"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 3000

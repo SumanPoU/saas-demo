@@ -1,0 +1,42 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/health"
+  method: GET
+  headers:
+    Accept: application/json
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 503
+  statusText: Service Unavailable
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "status": "<string>",
+        "info": {
+          "key_0": {
+            "status": "<string>"
+          }
+        },
+        "error": {
+          "key_0": {
+            "status": "<string>"
+          },
+          "key_1": {
+            "status": "<string>"
+          },
+          "key_2": {
+            "status": "<string>"
+          }
+        },
+        "details": {
+          "key_0": {
+            "status": "<string>"
+          }
+        }
+      }
+order: 2000

@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/refresh"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "refreshToken": "<string>"
+    }
+examples: ./.resources/Rotate JWT access and refresh tokens.resources/examples
+order: 1000

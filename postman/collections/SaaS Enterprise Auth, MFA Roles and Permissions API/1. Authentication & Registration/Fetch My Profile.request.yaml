@@ -1,0 +1,9 @@
+$kind: http-request
+description: Fetch details of the currently authenticated active session.
+url: "{{baseUrl}}/v1/auth/profile"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 9000

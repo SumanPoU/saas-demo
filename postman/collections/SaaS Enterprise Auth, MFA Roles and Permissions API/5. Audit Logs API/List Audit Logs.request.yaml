@@ -1,0 +1,12 @@
+$kind: http-request
+description: Retrieves audit logs with actor details.
+url: "{{baseUrl}}/v1/audit?page=1&limit=25"
+method: GET
+queryParams:
+  page: "1"
+  limit: "25"
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 1000

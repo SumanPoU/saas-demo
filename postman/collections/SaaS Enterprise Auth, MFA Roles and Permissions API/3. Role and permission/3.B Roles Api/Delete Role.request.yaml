@@ -1,0 +1,9 @@
+$kind: http-request
+description: Deletes roleId. This fails if the role is still assigned to users.
+url: "{{baseUrl}}/v1/roles/{{roleId}}"
+method: DELETE
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 10000

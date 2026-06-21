@@ -1,0 +1,13 @@
+$kind: http-request
+description: Public endpoint confirming the email token link generated when standard logins detect an unrecognized userAgent/device details.
+url: "{{baseUrl}}/v1/mfa/verify-device"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "token": "{{deviceVerificationToken}}"
+    }
+order: 4000

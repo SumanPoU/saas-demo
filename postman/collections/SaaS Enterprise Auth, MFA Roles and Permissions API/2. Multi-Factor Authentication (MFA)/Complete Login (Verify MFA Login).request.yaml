@@ -1,0 +1,25 @@
+$kind: http-request
+description: Completes standard logins when MFA is active. Accepts the short-lived `mfaPendingToken` combined with either a 6-digit TOTP code or an 8-character single-use backup code. Returns active JWT session tokens.
+url: "{{baseUrl}}/v1/mfa/verify-login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "mfaPendingToken": "{{mfaPendingToken}}",
+      "code": "282007"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const response = pm.response.json();
+      if (pm.response.code === 200 && response.success && response.data) {
+          pm.environment.set("accessToken", response.data.accessToken);
+          pm.environment.set("refreshToken", response.data.refreshToken);
+          pm.environment.set("mfaPendingToken", "");
+          console.log("MFA Verification Successful! Authorized Session Tokens captured.");
+      }
+    language: text/javascript
+order: 3000

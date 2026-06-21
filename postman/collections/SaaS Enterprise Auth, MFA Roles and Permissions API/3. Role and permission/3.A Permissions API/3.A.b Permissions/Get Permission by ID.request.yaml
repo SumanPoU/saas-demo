@@ -1,0 +1,9 @@
+$kind: http-request
+description: Fetches details of a specific permission including the groups it belongs to.
+url: "{{baseUrl}}/v1/permissions/{{permissionId}}"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 3000

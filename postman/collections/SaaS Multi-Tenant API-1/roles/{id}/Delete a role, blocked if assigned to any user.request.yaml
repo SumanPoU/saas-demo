@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/roles/:id"
+method: DELETE
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Delete a role, blocked if assigned to any user.resources/examples
+order: 3000

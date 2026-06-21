@@ -1,0 +1,17 @@
+$kind: http-request
+name: Authenticate a user via GitHub Single Sign-On (SSO) code token exchange
+url: "{{baseUrl}}/auth/oauth/github"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "code": "<string>",
+      "state": "<string>",
+      "expectedState": "<string>"
+    }
+examples: ./.resources/Authenticate a user via GitHub Single Sign-On (SSO) code token e.resources/examples
+order: 1000

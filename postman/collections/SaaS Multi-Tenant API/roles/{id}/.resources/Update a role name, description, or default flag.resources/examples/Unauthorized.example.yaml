@@ -1,0 +1,25 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/roles/:id"
+  method: PATCH
+  headers:
+    Content-Type: application/json
+  pathVariables:
+    - key: id
+      value: <string>
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "name": "<string>",
+        "description": "<string>",
+        "isDefault": "<boolean>"
+      }
+response:
+  statusCode: 401
+  statusText: Unauthorized
+  body:
+    type: text
+    content: ""
+order: 3000

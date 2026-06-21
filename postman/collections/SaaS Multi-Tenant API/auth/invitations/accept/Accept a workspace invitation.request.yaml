@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/invitations/accept"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "token": "<string>"
+    }
+examples: ./.resources/Accept a workspace invitation.resources/examples
+order: 1000

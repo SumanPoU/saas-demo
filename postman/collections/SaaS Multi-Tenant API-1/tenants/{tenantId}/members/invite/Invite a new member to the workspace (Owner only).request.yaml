@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants/:tenantId/members/invite"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: tenantId
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "email": "<string>",
+      "roleId": "<string>"
+    }
+examples: ./.resources/Invite a new member to the workspace (Owner only).resources/examples
+order: 1000

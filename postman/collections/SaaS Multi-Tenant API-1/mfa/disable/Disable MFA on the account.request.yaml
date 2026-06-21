@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/mfa/disable"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "code": "<string>"
+    }
+examples: ./.resources/Disable MFA on the account.resources/examples
+order: 1000

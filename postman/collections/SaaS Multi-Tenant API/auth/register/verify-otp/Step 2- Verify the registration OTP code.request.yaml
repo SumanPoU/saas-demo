@@ -1,0 +1,16 @@
+$kind: http-request
+name: "Step 2: Verify the registration OTP code"
+url: "{{baseUrl}}/auth/register/verify-otp"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "<string>",
+      "otp": "<string>"
+    }
+examples: ./.resources/Step 2- Verify the registration OTP code.resources/examples
+order: 1000

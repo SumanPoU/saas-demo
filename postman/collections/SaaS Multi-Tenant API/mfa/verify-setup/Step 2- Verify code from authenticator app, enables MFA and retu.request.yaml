@@ -1,0 +1,14 @@
+$kind: http-request
+name: "Step 2: Verify code from authenticator app, enables MFA and returns backup codes"
+url: "{{baseUrl}}/mfa/verify-setup"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "code": "<string>"
+    }
+examples: ./.resources/Step 2- Verify code from authenticator app, enables MFA and retu.resources/examples
+order: 1000

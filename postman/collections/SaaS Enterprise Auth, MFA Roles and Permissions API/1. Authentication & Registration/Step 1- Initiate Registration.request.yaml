@@ -1,0 +1,16 @@
+$kind: http-request
+name: "Step 1: Initiate Registration"
+description: Step 1 of the multi-step registration flow. Generates a pending inactive user and triggers an email verification OTP code.
+url: "{{baseUrl}}/v1/auth/register/initiate"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "test-mfa-user@example.com",
+      "firstName": "Mfa",
+      "lastName": "User"
+    }
+order: 1000

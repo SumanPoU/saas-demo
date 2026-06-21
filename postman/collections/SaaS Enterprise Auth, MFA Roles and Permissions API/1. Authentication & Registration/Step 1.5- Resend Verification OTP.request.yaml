@@ -1,0 +1,14 @@
+$kind: http-request
+name: "Step 1.5: Resend Verification OTP"
+description: Resends a fresh 6-digit email verification OTP code to the pending registration session.
+url: "{{baseUrl}}/v1/auth/register/resend-otp"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "test-mfa-user@example.com"
+    }
+order: 2000

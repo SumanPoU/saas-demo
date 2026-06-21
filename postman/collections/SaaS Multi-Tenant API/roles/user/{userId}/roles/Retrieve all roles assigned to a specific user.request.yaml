@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/roles/user/:userId/roles"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: userId
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Retrieve all roles assigned to a specific user.resources/examples
+order: 1000

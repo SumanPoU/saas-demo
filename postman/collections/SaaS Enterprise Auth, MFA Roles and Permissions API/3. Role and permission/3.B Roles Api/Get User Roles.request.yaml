@@ -1,0 +1,9 @@
+$kind: http-request
+description: Lists all roles currently assigned to a specific user.
+url: "{{baseUrl}}/v1/roles/user/{{userId}}/roles"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 9000

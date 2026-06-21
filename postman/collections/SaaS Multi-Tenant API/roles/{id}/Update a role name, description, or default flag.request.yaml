@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/roles/:id"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "name": "<string>",
+      "description": "<string>",
+      "isDefault": "<boolean>"
+    }
+examples: ./.resources/Update a role name, description, or default flag.resources/examples
+order: 2000

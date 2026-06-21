@@ -1,0 +1,7 @@
+$kind: http-request
+description: "Admin-only endpoint. Lists global_config records. Optional query: category=system, security, auth, or mail."
+url: "{{baseUrl}}/v1/global-config"
+method: GET
+headers:
+  Authorization: Bearer {{accessToken}}
+order: 1000

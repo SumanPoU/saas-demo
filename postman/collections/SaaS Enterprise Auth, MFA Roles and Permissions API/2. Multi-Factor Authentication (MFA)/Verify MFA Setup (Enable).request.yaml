@@ -1,0 +1,17 @@
+$kind: http-request
+description: "MFA Step 2: Validates the TOTP authenticator code, fully enables MFA on the account, and returns 8 bcrypt-hashed backup codes *once*."
+url: "{{baseUrl}}/v1/mfa/verify-setup"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "555604"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 2000

@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants/:tenantId/billing/invoices/:id"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  - key: tenantId
+    value: <string>
+    description: "(Required) "
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get details of a specific invoice (Owner only).resources/examples
+order: 1000

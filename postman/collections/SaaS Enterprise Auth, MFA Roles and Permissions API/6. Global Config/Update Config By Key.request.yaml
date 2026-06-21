@@ -1,0 +1,18 @@
+$kind: http-request
+description: Admin-only endpoint. Updates a global_config record by key. For example, PATCH /v1/global-config/app updates app.name and app.frontendUrl.
+url: "{{baseUrl}}/v1/global-config/app"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: text
+  content: |-
+    {
+      "category": "system",
+      "value": {
+        "name": "SaaS Enterprise Demo",
+        "frontendUrl": "http://localhost:3000"
+      }
+    }
+order: 4000

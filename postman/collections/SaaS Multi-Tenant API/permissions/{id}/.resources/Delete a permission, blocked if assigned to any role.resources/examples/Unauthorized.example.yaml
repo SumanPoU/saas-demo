@@ -1,0 +1,18 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/permissions/:id"
+  method: DELETE
+  pathVariables:
+    - key: id
+      value: <string>
+      description: "(Required) "
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 401
+  statusText: Unauthorized
+  body:
+    type: text
+    content: ""
+order: 3000

@@ -1,0 +1,5 @@
+$kind: collection
+name: SaaS Multi-Tenant API
+description: Auto-generated OpenAPI specification for the SaaS Demo application.
+variables:
+  baseUrl: /

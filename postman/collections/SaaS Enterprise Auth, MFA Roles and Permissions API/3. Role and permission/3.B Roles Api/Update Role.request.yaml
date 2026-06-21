@@ -1,0 +1,18 @@
+$kind: http-request
+description: Modifies the name or description of a role. Default roles cannot be deleted but can be updated.
+url: "{{baseUrl}}/v1/roles/{{roleId}}"
+method: PATCH
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "description": "Can review reports, QA workflows, and operational checks.",
+      "isDefault": false
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 4000

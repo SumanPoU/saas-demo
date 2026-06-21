@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/billing/plans/:id"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "name": "<string>",
+      "description": "<string>",
+      "isActive": "<boolean>"
+    }
+examples: ./.resources/Update a subscription plan (Super Admin only).resources/examples
+order: 1000

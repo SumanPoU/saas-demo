@@ -1,0 +1,15 @@
+$kind: http-request
+name: "Step 2: Verify Registration OTP"
+description: Verifies the 6-digit registration OTP code, marking the email as verified.
+url: "{{baseUrl}}/v1/auth/register/verify-otp"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "test-mfa-user@example.com",
+      "otp": "{{registrationOtp}}"
+    }
+order: 3000

@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/billing/plans"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "<string>",
+      "price": "<number>",
+      "billingCycle": "<string>",
+      "description": "<string>",
+      "features": {},
+      "stripeProductId": "<string>",
+      "stripePriceId": "<string>"
+    }
+examples: ./.resources/Create a subscription plan (Super Admin only).resources/examples
+order: 1000

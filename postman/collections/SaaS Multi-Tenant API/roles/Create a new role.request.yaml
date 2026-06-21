@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/roles"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "<string>",
+      "description": "<string>",
+      "isDefault": "<boolean>"
+    }
+examples: ./.resources/Create a new role.resources/examples
+order: 1000

@@ -1,0 +1,14 @@
+$kind: http-request
+name: "Step 1: Initiate MFA account recovery, dispatches recovery link to email"
+url: "{{baseUrl}}/mfa/recover"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "<string>"
+    }
+examples: ./.resources/Step 1- Initiate MFA account recovery, dispatches recovery link.resources/examples
+order: 1000

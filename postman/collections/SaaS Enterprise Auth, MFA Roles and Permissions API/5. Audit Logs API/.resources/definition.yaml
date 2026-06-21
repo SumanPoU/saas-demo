@@ -1,0 +1,3 @@
+$kind: collection
+description: Admin audit trail endpoints with pagination and search.
+order: 5000

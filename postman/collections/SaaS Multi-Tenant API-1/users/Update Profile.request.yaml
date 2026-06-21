@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{base_url}}/users/me/profile"
+method: PATCH
+body:
+  type: formdata
+  content:
+    - type: text
+      key: firstName
+      value: John
+    - type: text
+      key: lastName
+      value: Doe
+    - type: file
+      key: avatar
+      src: []
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+order: 4000

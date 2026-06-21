@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/users/:id"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "firstName": "<string>",
+      "lastName": "<string>",
+      "avatarUrl": "<string>",
+      "isActive": "<boolean>"
+    }
+examples: ./.resources/Update safe user profile and status fields.resources/examples
+order: 2000

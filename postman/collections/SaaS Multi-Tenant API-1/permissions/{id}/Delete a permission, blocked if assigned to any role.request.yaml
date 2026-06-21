@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/permissions/:id"
+method: DELETE
+pathVariables:
+  - key: id
+    value: <string>
+    description: "(Required) "
+body:
+  type: text
+  content: ""
+examples: ./.resources/Delete a permission, blocked if assigned to any role.resources/examples
+order: 3000

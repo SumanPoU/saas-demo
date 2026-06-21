@@ -1,0 +1,22 @@
+$kind: http-request
+description: Rotates current active JWT access and refresh token pair using Refresh Token Rotation (RTR) replay/reuse prevention logic.
+url: "{{baseUrl}}/v1/auth/refresh"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "refreshToken": "{{refreshToken}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const response = pm.response.json();
+      if (pm.response.code === 200 && response.success && response.data && response.data.tokens) {
+          pm.environment.set("accessToken", response.data.tokens.accessToken);
+          pm.environment.set("refreshToken", response.data.tokens.refreshToken);
+          console.log("Rotated token pair captured successfully!");
+      }
+order: 8000

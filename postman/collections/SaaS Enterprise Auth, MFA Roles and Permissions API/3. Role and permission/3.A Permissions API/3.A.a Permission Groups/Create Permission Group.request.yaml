@@ -1,0 +1,27 @@
+$kind: http-request
+description: Creates a permission group and stores permissionGroupId.
+url: "{{baseUrl}}/v1/permissions/groups"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "name": "Reporting {{$timestamp}}",
+      "description": "Permissions related to reports and analytics."
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      const response = pm.response.json();
+      const data = response.data || response;
+      const value = data.id || response.id;
+      if (value) {
+          pm.environment.set("permissionGroupId", value);
+      }
+order: 1000

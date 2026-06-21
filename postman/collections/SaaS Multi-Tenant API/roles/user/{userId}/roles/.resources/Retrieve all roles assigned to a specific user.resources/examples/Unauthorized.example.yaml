@@ -1,0 +1,18 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/roles/user/:userId/roles"
+  method: GET
+  pathVariables:
+    - key: userId
+      value: <string>
+      description: "(Required) "
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 401
+  statusText: Unauthorized
+  body:
+    type: text
+    content: ""
+order: 2000

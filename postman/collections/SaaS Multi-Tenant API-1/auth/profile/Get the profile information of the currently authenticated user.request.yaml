@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/profile"
+method: GET
+headers:
+  Accept: application/json
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get the profile information of the currently authenticated user.resources/examples
+order: 1000

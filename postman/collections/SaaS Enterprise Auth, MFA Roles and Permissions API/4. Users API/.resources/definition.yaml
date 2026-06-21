@@ -1,0 +1,3 @@
+$kind: collection
+description: Admin user management endpoints. Create/reset flows generate temporary passwords by email and set mustChangePassword=true; passwords are never returned by the API.
+order: 4000

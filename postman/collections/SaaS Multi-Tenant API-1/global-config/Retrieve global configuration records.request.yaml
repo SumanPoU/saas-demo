@@ -1,0 +1,11 @@
+$kind: http-request
+description: Returns global_config records. Optional category filters include security, auth, system, and mail.
+url: "{{baseUrl}}/global-config?category=<string>"
+method: GET
+queryParams:
+  category: <string>
+body:
+  type: text
+  content: ""
+examples: ./.resources/Retrieve global configuration records.resources/examples
+order: 1000

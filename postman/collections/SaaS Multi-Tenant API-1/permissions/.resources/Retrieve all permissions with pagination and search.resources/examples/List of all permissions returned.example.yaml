@@ -1,0 +1,22 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/permissions?page=1&limit=25&search=<string>"
+  method: GET
+  headers:
+    Accept: application/json
+  queryParams:
+    page: "1"
+    limit: "25"
+    search: <string>
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: ""
+order: 1000

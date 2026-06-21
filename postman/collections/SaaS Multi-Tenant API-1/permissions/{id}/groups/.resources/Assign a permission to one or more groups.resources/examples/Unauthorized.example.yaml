@@ -1,0 +1,26 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/permissions/:id/groups"
+  method: POST
+  headers:
+    Content-Type: application/json
+  pathVariables:
+    - key: id
+      value: <string>
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "groupIds": [
+          "<string>",
+          "<string>"
+        ]
+      }
+response:
+  statusCode: 401
+  statusText: Unauthorized
+  body:
+    type: text
+    content: ""
+order: 3000

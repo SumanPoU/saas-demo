@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "<string>",
+      "slug": "<string>",
+      "settings": {}
+    }
+examples: ./.resources/Create a new workspace.resources/examples
+order: 1000

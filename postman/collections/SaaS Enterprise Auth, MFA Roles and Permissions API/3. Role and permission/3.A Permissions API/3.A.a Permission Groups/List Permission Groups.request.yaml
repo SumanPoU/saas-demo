@@ -1,0 +1,19 @@
+$kind: http-request
+description: Lists permission groups and captures the first group id when present.
+url: "{{baseUrl}}/v1/permissions/groups"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      const response = pm.response.json();
+      const data = response.data || response;
+      const items = data;
+      const item = Array.isArray(items) ? items.find((entry) => true) : null;
+      if (item && item.id) {
+          pm.environment.set("permissionGroupId", item.id);
+      }
+order: 2000

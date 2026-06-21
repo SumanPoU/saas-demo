@@ -1,0 +1,9 @@
+$kind: http-request
+description: Deletes permissionId. This fails if the permission is still assigned to roles.
+url: "{{baseUrl}}/v1/permissions/{{permissionId}}"
+method: DELETE
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 7000

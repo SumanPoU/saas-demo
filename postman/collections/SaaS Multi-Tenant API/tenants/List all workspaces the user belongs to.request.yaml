@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/tenants"
+method: GET
+headers:
+  Accept: application/json
+body:
+  type: text
+  content: ""
+examples: ./.resources/List all workspaces the user belongs to.resources/examples
+order: 2000

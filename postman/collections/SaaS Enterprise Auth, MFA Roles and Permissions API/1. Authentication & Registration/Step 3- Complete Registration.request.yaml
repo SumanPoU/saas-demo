@@ -1,0 +1,17 @@
+$kind: http-request
+name: "Step 3: Complete Registration"
+description: Step 3 of registration. Sets the account password and fully activates the user. Requires manual login afterwards (no tokens are issued).
+url: "{{baseUrl}}/v1/auth/register/complete"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "test-mfa-user@example.com",
+      "code": "{{registrationOtp}}",
+      "password": "{{newAccountPassword}}",
+      "confirmPassword": "{{newAccountPassword}}"
+    }
+order: 4000

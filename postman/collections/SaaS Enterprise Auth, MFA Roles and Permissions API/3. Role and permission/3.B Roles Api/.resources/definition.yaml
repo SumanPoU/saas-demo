@@ -1,0 +1,3 @@
+$kind: collection
+description: Role management and role assignment endpoints.
+order: 2000

@@ -1,0 +1,28 @@
+$kind: http-request
+description: Creates a role and stores roleId.
+url: "{{baseUrl}}/v1/roles"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "name": "QA Reviewer {{$timestamp}}",
+      "description": "Can review reports and QA workflows.",
+      "isDefault": false
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      const response = pm.response.json();
+      const data = response.data || response;
+      const value = data.id || response.id;
+      if (value) {
+          pm.environment.set("roleId", value);
+      }
+order: 1000

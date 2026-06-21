@@ -1,0 +1,20 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/global-config/:key"
+  method: PATCH
+  headers:
+    Content-Type: application/json
+  pathVariables:
+    - key: key
+      value: jwt
+      description: (Required)  (This can only be one of bcrypt,throttle,jwt,app,mail)
+  body:
+    type: json
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  body:
+    type: text
+    content: ""
+order: 1000

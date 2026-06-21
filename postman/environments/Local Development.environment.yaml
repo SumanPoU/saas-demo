@@ -1,0 +1,46 @@
+name: Local Development
+values:
+  - key: baseUrl
+    value: 'http://localhost:5000'
+  - key: accessToken
+    value: ''
+  - key: refreshToken
+    value: ''
+  - key: mfaPendingToken
+    value: ''
+  - key: userId
+    value: ''
+  - key: roleId
+    value: ''
+  - key: permissionId
+    value: ''
+  - key: permissionGroupId
+    value: ''
+  - key: loginIdentifier
+    value: admin@demo.com
+  - key: loginPassword
+    value: ''
+  - key: registrationOtp
+    value: ''
+  - key: passwordResetOtp
+    value: ''
+  - key: totpCode
+    value: ''
+  - key: deviceVerificationToken
+    value: ''
+  - key: mfaRecoveryToken
+    value: ''
+  - key: newAccountPassword
+    value: ''
+  - key: newPassword
+    value: ''
+  - key: passwordChangeToken
+    value: ''
+  - key: temporaryPassword
+    value: ''
+  - key: requiredNewPassword
+    value: NewPassword123!
+  - key: createdUserEmail
+    value: created.user@example.com
+  - key: createdUserUsername
+    value: createduser

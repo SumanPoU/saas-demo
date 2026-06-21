@@ -1,0 +1,26 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/users/:id"
+  method: PATCH
+  headers:
+    Content-Type: application/json
+  pathVariables:
+    - key: id
+      value: <string>
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "firstName": "<string>",
+        "lastName": "<string>",
+        "avatarUrl": "<string>",
+        "isActive": "<boolean>"
+      }
+response:
+  statusCode: 404
+  statusText: Not Found
+  body:
+    type: text
+    content: ""
+order: 2000

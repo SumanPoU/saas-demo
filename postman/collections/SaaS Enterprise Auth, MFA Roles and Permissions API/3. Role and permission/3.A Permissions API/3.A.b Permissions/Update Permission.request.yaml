@@ -1,0 +1,17 @@
+$kind: http-request
+description: Modifies the details of a permission (e.g., name, description, resource type).
+url: "{{baseUrl}}/v1/permissions/{{permissionId}}"
+method: PATCH
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "description": "Allows viewing reporting dashboards."
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 4000

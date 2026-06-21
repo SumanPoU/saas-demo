@@ -1,0 +1,19 @@
+$kind: http-request
+description: Grants additional permissions to a role by linking them.
+url: "{{baseUrl}}/v1/roles/{{roleId}}/permissions"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "permissionIds": [
+        "{{permissionId}}"
+      ]
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 5000

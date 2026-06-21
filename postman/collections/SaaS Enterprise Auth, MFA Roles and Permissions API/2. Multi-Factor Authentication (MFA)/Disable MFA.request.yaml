@@ -1,0 +1,17 @@
+$kind: http-request
+description: Deactivates Multi-Factor Authentication. Requires a valid TOTP confirmation code and terminates all backup codes.
+url: "{{baseUrl}}/v1/mfa/disable"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "{{totpCode}}"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 6000

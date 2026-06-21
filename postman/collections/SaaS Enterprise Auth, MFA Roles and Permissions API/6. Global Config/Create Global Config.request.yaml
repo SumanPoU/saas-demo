@@ -1,0 +1,19 @@
+$kind: http-request
+description: Admin-only endpoint. Creates a global_config record by key.
+url: "{{baseUrl}}/v1/global-config"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: text
+  content: |-
+    {
+      "key": "app",
+      "category": "system",
+      "value": {
+        "name": "SaaS Enterprise Demo",
+        "frontendUrl": "http://localhost:3000"
+      }
+    }
+order: 2000

@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/permissions/groups"
+method: GET
+headers:
+  Accept: application/json
+body:
+  type: text
+  content: ""
+examples: ./.resources/Retrieve all permission groups with their permissions.resources/examples
+order: 2000
