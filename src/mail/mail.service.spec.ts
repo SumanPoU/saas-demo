@@ -5,22 +5,24 @@ describe('MailService', () => {
   let service: MailService;
 
   beforeEach(() => {
-    service = new MailService({
-      get: jest.fn((key: string) => {
-        const values: Record<string, string | number> = {
-          'mail.host': 'localhost',
-          'mail.port': 587,
-          'mail.user': 'mock-user',
-          'mail.pass': '',
-          'mail.from': '"Demo" <noreply@example.com>',
-        };
-        return values[key];
-      }),
-    } as unknown as ConfigService,
-    {
-      getString: jest.fn(),
-      getNumber: jest.fn(),
-    } as any);
+    service = new MailService(
+      {
+        get: jest.fn((key: string) => {
+          const values: Record<string, string | number> = {
+            'mail.host': 'localhost',
+            'mail.port': 587,
+            'mail.user': 'mock-user',
+            'mail.pass': '',
+            'mail.from': '"Demo" <noreply@example.com>',
+          };
+          return values[key];
+        }),
+      } as unknown as ConfigService,
+      {
+        getString: jest.fn(),
+        getNumber: jest.fn(),
+      } as any,
+    );
   });
 
   it('sends temporary password email through the common sendEmail helper', async () => {

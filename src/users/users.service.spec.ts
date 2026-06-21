@@ -58,7 +58,13 @@ describe('UsersService', () => {
       uploadFile: jest.fn(),
     };
 
-    service = new UsersService(prisma, pagination, mailService, runtimeConfig, mediaService);
+    service = new UsersService(
+      prisma,
+      pagination,
+      mailService,
+      runtimeConfig,
+      mediaService,
+    );
   });
 
   it('creates a user with a generated temporary password and requires password change', async () => {
