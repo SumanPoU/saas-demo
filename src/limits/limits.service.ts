@@ -73,7 +73,8 @@ export class LimitsService {
 
       return { exceeded: usage.isExceeded };
     } catch (err) {
-      this.logger.error(`Error recording API usage: ${err.message}`);
+      const error = err as Error;
+      this.logger.error(`Error recording API usage: ${error.message}`);
       return { exceeded: false }; // Fail open
     }
   }

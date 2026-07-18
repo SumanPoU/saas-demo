@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   UnauthorizedException,
   HttpException,
@@ -35,6 +34,14 @@ type JwtPurpose = 'access' | 'refresh';
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+
+  /** Uniform login failure message — do not reveal whether the account exists or is inactive. */
+  private static readonly INVALID_CREDENTIALS_MESSAGE =
+    'Invalid email, username, or password';
+
+  /** Uniform registration initiate message — do not reveal whether the email is already registered. */
+  private static readonly REGISTRATION_INITIATE_MESSAGE =
+    'If this email can be registered, a verification OTP has been sent.';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -81,7 +88,10 @@ export class AuthService {
 
     if (existingUser) {
       if (existingUser.isActive || existingUser.passwordHash) {
-        throw new ConflictException('Email address is already registered');
+        return {
+          message: AuthService.REGISTRATION_INITIATE_MESSAGE,
+          email: emailLower,
+        };
       }
 
       // Overwrite previous incomplete pending user registration to ensure a fresh session sequence
@@ -138,8 +148,7 @@ export class AuthService {
     );
 
     return {
-      message: 'Verification OTP has been sent to your email address',
-      userId: user.id,
+      message: AuthService.REGISTRATION_INITIATE_MESSAGE,
       email: user.email,
     };
   }
@@ -343,11 +352,11 @@ export class AuthService {
     });
 
     if (!user || !user.passwordHash) {
-      throw new UnauthorizedException('Invalid email, username, or password');
+      throw new UnauthorizedException(AuthService.INVALID_CREDENTIALS_MESSAGE);
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException('This account has been deactivated');
+      throw new UnauthorizedException(AuthService.INVALID_CREDENTIALS_MESSAGE);
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -355,7 +364,7 @@ export class AuthService {
       user.passwordHash,
     );
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email, username, or password');
+      throw new UnauthorizedException(AuthService.INVALID_CREDENTIALS_MESSAGE);
     }
 
     const defaultMembership =
@@ -1541,7 +1550,7 @@ export class AuthService {
     });
 
     if (!user.isActive) {
-      throw new UnauthorizedException('This account has been deactivated');
+      throw new UnauthorizedException(AuthService.INVALID_CREDENTIALS_MESSAGE);
     }
 
     const mfaResult = await this.checkMfaRequired(user);
@@ -1585,11 +1594,13 @@ export class AuthService {
       };
     }
 
-    // If user is already active, prevent OTP spamming
+    // If user is already active, return the same generic message (no enumeration)
     if (user.isActive || user.passwordHash) {
-      throw new BadRequestException(
-        'This email address is already fully registered and verified. Please log in.',
-      );
+      return {
+        success: true,
+        message:
+          'If this email address is registered in a pending state, a fresh verification OTP has been sent.',
+      };
     }
 
     // Revoke any existing active unused verification tokens for this user

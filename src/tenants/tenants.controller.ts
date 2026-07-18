@@ -7,6 +7,8 @@ import {
   Param,
   Delete,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,10 +19,12 @@ import {
 import { TenantsService } from './tenants.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { RestoreTenantDto } from './dto/restore-tenant.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { RequestUser } from '../auth/interfaces/request-user.interface';
+import { Public } from '../auth/decorators/public.decorator';
 import { TenantMemberGuard } from '../auth/guards/tenant-member.guard';
 import { TenantOwnerGuard } from '../auth/guards/tenant-owner.guard';
+import { ResponseMessage } from '../common/response';
 
 @ApiTags('Tenants')
 @ApiBearerAuth('JWT')
@@ -33,20 +37,29 @@ export class TenantsController {
   @ApiResponse({
     status: 201,
     description: 'Workspace created successfully',
-    schema: {
-      example: {
-        statusCode: 201,
-        message: 'Workspace created successfully',
-        data: {
-          id: 'tenant-id',
-          name: 'My Workspace',
-          domain: 'my-workspace',
-        },
-      },
-    },
   })
-  create(@CurrentUser() user: any, @Body() dto: CreateTenantDto) {
-    return this.tenantsService.create(user.userId || user.id, dto);
+  create(
+    @CurrentUser() user: { id?: string; userId?: string },
+    @Body() dto: CreateTenantDto,
+  ) {
+    return this.tenantsService.create(user.userId || user.id!, dto);
+  }
+
+  @Public()
+  @Post('restore')
+  @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Workspace restored successfully')
+  @ApiOperation({
+    summary:
+      'Restore a soft-deleted workspace using the emailed restoration token',
+  })
+  @ApiResponse({ status: 200, description: 'Workspace restored successfully' })
+  @ApiResponse({
+    status: 404,
+    description: 'Invalid or expired restoration token',
+  })
+  restore(@Body() dto: RestoreTenantDto) {
+    return this.tenantsService.restore(dto);
   }
 
   @Get()
@@ -54,46 +67,21 @@ export class TenantsController {
   @ApiResponse({
     status: 200,
     description: 'Workspaces retrieved successfully',
-    schema: {
-      example: {
-        statusCode: 200,
-        message: 'Workspaces retrieved successfully',
-        data: [
-          {
-            id: 'tenant-id',
-            name: 'My Workspace',
-            domain: 'my-workspace',
-          },
-        ],
-      },
-    },
   })
-  findAll(@CurrentUser() user: any) {
+  findAll(
+    @CurrentUser()
+    user: { id?: string; userId?: string; isSuperAdmin?: boolean },
+  ) {
     return this.tenantsService.findAll(
-      user.userId || user.id,
-      user.isSuperAdmin,
+      user.userId || user.id!,
+      Boolean(user.isSuperAdmin),
     );
   }
 
   @Get(':id')
   @UseGuards(TenantMemberGuard)
   @ApiOperation({ summary: 'Get workspace details' })
-  @ApiResponse({
-    status: 200,
-    description: 'Workspace details returned',
-    schema: {
-      example: {
-        statusCode: 200,
-        message: 'Workspace details retrieved successfully',
-        data: {
-          id: 'tenant-id',
-          name: 'My Workspace',
-          domain: 'my-workspace',
-          isActive: true,
-        },
-      },
-    },
-  })
+  @ApiResponse({ status: 200, description: 'Workspace details returned' })
   findOne(@Param('id') id: string) {
     return this.tenantsService.findOne(id);
   }
@@ -101,40 +89,24 @@ export class TenantsController {
   @Patch(':id')
   @UseGuards(TenantOwnerGuard)
   @ApiOperation({ summary: 'Update workspace settings (Owner only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Workspace updated successfully',
-    schema: {
-      example: {
-        statusCode: 200,
-        message: 'Workspace updated successfully',
-        data: {
-          id: 'tenant-id',
-          name: 'My Updated Workspace',
-          domain: 'my-updated-workspace',
-        },
-      },
-    },
-  })
+  @ApiResponse({ status: 200, description: 'Workspace updated successfully' })
   update(@Param('id') id: string, @Body() dto: UpdateTenantDto) {
     return this.tenantsService.update(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(TenantOwnerGuard)
-  @ApiOperation({ summary: 'Delete workspace (Owner only)' })
+  @ApiOperation({
+    summary: 'Soft-delete workspace and email a restoration token (Owner only)',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Workspace deleted successfully',
-    schema: {
-      example: {
-        statusCode: 200,
-        message: 'Workspace deleted successfully',
-        data: null,
-      },
-    },
+    description: 'Workspace soft-deleted; restoration token emailed to owner',
   })
-  remove(@Param('id') id: string) {
-    return this.tenantsService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @CurrentUser() user: { id?: string; userId?: string },
+  ) {
+    return this.tenantsService.remove(id, user.userId || user.id!);
   }
 }

@@ -74,11 +74,7 @@ export class TenantMembersService {
     });
 
     const workspaceName = tenant?.name ?? 'the workspace';
-    await this.mailService.sendWorkspaceInvitation(
-      email,
-      workspaceName,
-      token,
-    );
+    await this.mailService.sendWorkspaceInvitation(email, workspaceName, token);
 
     // Never return the raw token in the API response — email is the only channel.
     return {

@@ -2,15 +2,21 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { RestoreTenantDto } from './dto/restore-tenant.dto';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class TenantsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   private generateSlug(name: string): string {
     return (
@@ -23,10 +29,13 @@ export class TenantsService {
     );
   }
 
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
   async create(userId: string, dto: CreateTenantDto) {
     const slug = dto.slug || this.generateSlug(dto.name);
 
-    // Check if slug exists
     const existing = await this.prisma.tenant.findUnique({ where: { slug } });
     if (existing) {
       throw new ConflictException('Workspace slug already taken');
@@ -35,7 +44,6 @@ export class TenantsService {
     const schemaName = `tenant_${slug.replace(/-/g, '_')}`;
 
     return this.prisma.$transaction(async (tx) => {
-      // Create Tenant
       const tenant = await tx.tenant.create({
         data: {
           name: dto.name,
@@ -45,7 +53,6 @@ export class TenantsService {
         },
       });
 
-      // Assign creator as owner
       await tx.tenantMembership.create({
         data: {
           tenantId: tenant.id,
@@ -65,7 +72,6 @@ export class TenantsService {
       });
     }
 
-    // Return only tenants the user is a member of
     return this.prisma.tenant.findMany({
       where: {
         deletedAt: null,
@@ -91,7 +97,7 @@ export class TenantsService {
   }
 
   async update(id: string, dto: UpdateTenantDto) {
-    await this.findOne(id); // Ensures existence
+    await this.findOne(id);
 
     if (dto.slug) {
       const existing = await this.prisma.tenant.findFirst({
@@ -106,15 +112,87 @@ export class TenantsService {
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id); // Ensures existence
+  /**
+   * Soft-delete a workspace and email the owner a restoration token.
+   */
+  async remove(id: string, requesterUserId: string) {
+    const tenant = await this.findOne(id);
 
-    return this.prisma.tenant.update({
+    const ownerMembership = await this.prisma.tenantMembership.findFirst({
+      where: { tenantId: id, isOwner: true },
+      include: { user: { select: { id: true, email: true } } },
+    });
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const restorationToken = this.hashToken(rawToken);
+
+    await this.prisma.tenant.update({
       where: { id },
       data: {
         deletedAt: new Date(),
         deletionRequestedAt: new Date(),
         isActive: false,
+        restorationToken,
+      },
+    });
+
+    const recipientEmail =
+      ownerMembership?.user.email ??
+      (
+        await this.prisma.user.findUnique({
+          where: { id: requesterUserId },
+          select: { email: true },
+        })
+      )?.email;
+
+    if (recipientEmail) {
+      await this.mailService.sendTenantRestorationEmail(
+        recipientEmail,
+        tenant.name,
+        rawToken,
+      );
+    }
+
+    return {
+      message:
+        'Workspace deleted successfully. A restoration token has been emailed to the owner.',
+    };
+  }
+
+  /**
+   * Restore a soft-deleted workspace using the emailed restoration token.
+   */
+  async restore(dto: RestoreTenantDto) {
+    const tokenHash = this.hashToken(dto.token);
+
+    const tenant = await this.prisma.tenant.findFirst({
+      where: {
+        restorationToken: tokenHash,
+        deletedAt: { not: null },
+      },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Invalid or expired restoration token');
+    }
+
+    if (
+      tenant.deletionRequestedAt &&
+      tenant.deletionRequestedAt.getTime() <
+        Date.now() - 30 * 24 * 60 * 60 * 1000
+    ) {
+      throw new BadRequestException(
+        'Restoration window has expired. Contact support.',
+      );
+    }
+
+    return this.prisma.tenant.update({
+      where: { id: tenant.id },
+      data: {
+        deletedAt: null,
+        deletionRequestedAt: null,
+        restorationToken: null,
+        isActive: true,
       },
     });
   }

@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -158,6 +157,24 @@ describe('AuthService', () => {
       mailService,
       runtimeConfig,
     );
+  });
+
+  it('uses the same invalid-credentials message for deactivated accounts', async () => {
+    const passwordHash = await bcrypt.hash('Password123!', 10);
+    prisma.user.findFirst.mockResolvedValue({
+      ...activeTempUser,
+      isActive: false,
+      mustChangePassword: false,
+      passwordHash,
+    });
+
+    await expect(
+      service.login(
+        { identifier: 'temp.user@example.com', password: 'Password123!' },
+        '127.0.0.1',
+        'Jest Agent',
+      ),
+    ).rejects.toThrow('Invalid email, username, or password');
   });
 
   it('returns a password-change next step instead of tokens for temporary-password login', async () => {
@@ -346,8 +363,8 @@ describe('AuthService', () => {
     });
 
     expect(result).toEqual({
-      message: 'Verification OTP has been sent to your email address',
-      userId: 'user-1',
+      message:
+        'If this email can be registered, a verification OTP has been sent.',
       email: 'new.user@example.com',
     });
     expect(prisma.user.create).toHaveBeenCalledWith({
@@ -375,16 +392,23 @@ describe('AuthService', () => {
     );
   });
 
-  it('rejects registration when the email is already active', async () => {
+  it('returns a generic success when the email is already active (no enumeration)', async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: 'user-1',
       isActive: true,
       passwordHash: 'hash',
     });
 
-    await expect(
-      service.registerInitiate({ email: 'new.user@example.com' }),
-    ).rejects.toBeInstanceOf(ConflictException);
+    const actualResult = await service.registerInitiate({
+      email: 'new.user@example.com',
+    });
+
+    expect(actualResult).toEqual({
+      message:
+        'If this email can be registered, a verification OTP has been sent.',
+      email: 'new.user@example.com',
+    });
+    expect(prisma.user.create).not.toHaveBeenCalled();
   });
 
   it('completes registration and clears mustChangePassword', async () => {

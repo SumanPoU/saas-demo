@@ -6,8 +6,15 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { Observable, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 import { LimitsService } from './limits.service';
+
+interface TenantScopedRequest {
+  params?: { tenantId?: string };
+  user?: { tenantId?: string };
+  route?: { path?: string };
+  url?: string;
+}
 
 @Injectable()
 export class ApiUsageInterceptor implements NestInterceptor {
@@ -16,13 +23,13 @@ export class ApiUsageInterceptor implements NestInterceptor {
   async intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Promise<Observable<any>> {
-    const request = context.switchToHttp().getRequest();
+  ): Promise<Observable<unknown>> {
+    const request = context.switchToHttp().getRequest<TenantScopedRequest>();
     const tenantId = request.params?.tenantId || request.user?.tenantId;
 
     if (tenantId) {
-      // Simplified: use route path as endpoint identifier
-      const endpoint = request.route?.path || request.url.split('?')[0];
+      const endpoint =
+        request.route?.path || request.url?.split('?')[0] || 'unknown';
 
       const { exceeded } = await this.limitsService.recordApiUsage(
         tenantId,

@@ -6,6 +6,7 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -24,6 +25,7 @@ import {
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ResponseMessage } from '../common/response';
+import { AUTH_SENSITIVE_THROTTLE } from '../auth/auth-throttle.constants';
 
 @ApiTags('Multi-Factor Authentication')
 @Controller('mfa')
@@ -89,6 +91,7 @@ export class MfaController {
   }
 
   @Public()
+  @Throttle(AUTH_SENSITIVE_THROTTLE)
   @Post('verify-login')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('MFA login successful')
@@ -115,6 +118,7 @@ export class MfaController {
   }
 
   @Public()
+  @Throttle(AUTH_SENSITIVE_THROTTLE)
   @Post('verify-device')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Device verified successfully')
@@ -147,6 +151,7 @@ export class MfaController {
   }
 
   @Public()
+  @Throttle(AUTH_SENSITIVE_THROTTLE)
   @Post('recover')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('MFA recovery request initiated')
@@ -160,6 +165,7 @@ export class MfaController {
   }
 
   @Public()
+  @Throttle(AUTH_SENSITIVE_THROTTLE)
   @Post('recover/verify')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Account successfully recovered and MFA disabled')

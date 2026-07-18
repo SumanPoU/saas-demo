@@ -272,4 +272,30 @@ export class MailService {
     `;
     await this.sendEmail(to, subject, text, html);
   }
+
+  /**
+   * Outbox Helper 8: Send tenant soft-delete restoration token
+   */
+  async sendTenantRestorationEmail(
+    to: string,
+    workspaceName: string,
+    restorationToken: string,
+  ) {
+    const subject = `Restore your workspace: ${workspaceName}`;
+    const text = `Your workspace "${workspaceName}" was deleted. Use this restoration token within 30 days to restore it: ${restorationToken}`;
+    const html = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #eef2f6; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #ef4444; text-align: center; font-size: 24px; margin-bottom: 25px; font-weight: 700;">Workspace Deleted</h2>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6;">Hello,</p>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">Your workspace <strong>${workspaceName}</strong> was soft-deleted. Use the restoration token below within <strong>30 days</strong> to restore it:</p>
+        <div style="text-align: center; margin: 35px 0;">
+          <span style="font-size: 16px; font-weight: bold; letter-spacing: 1px; color: #1e1b4b; background-color: #f8fafc; padding: 15px 25px; border-radius: 10px; border: 1px dashed #f87171; display: inline-block; word-break: break-all;">${restorationToken}</span>
+        </div>
+        <p style="color: #64748b; font-size: 14px; line-height: 1.5; text-align: center;">If you did not request this deletion, contact support immediately.</p>
+        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">&copy; ${new Date().getFullYear()} SaaS Demo. All rights reserved.</p>
+      </div>
+    `;
+    await this.sendEmail(to, subject, text, html);
+  }
 }

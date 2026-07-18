@@ -78,4 +78,24 @@ describe('MailService', () => {
       expect.stringContaining(inputToken),
     );
   });
+
+  it('sends tenant restoration email through the common sendEmail helper', async () => {
+    const sendEmail = jest
+      .spyOn(service, 'sendEmail')
+      .mockResolvedValue(undefined);
+    const inputToken = 'd'.repeat(64);
+
+    await service.sendTenantRestorationEmail(
+      'owner@example.com',
+      'Acme Workspace',
+      inputToken,
+    );
+
+    expect(sendEmail).toHaveBeenCalledWith(
+      'owner@example.com',
+      'Restore your workspace: Acme Workspace',
+      expect.stringContaining(inputToken),
+      expect.stringContaining(inputToken),
+    );
+  });
 });
