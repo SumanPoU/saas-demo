@@ -1,15 +1,17 @@
 import {
   Injectable,
   Logger,
-  OnModuleInit,
   InternalServerErrorException,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import * as Minio from 'minio';
 import * as crypto from 'crypto';
 import * as path from 'path';
+import { STORAGE_PROVIDER } from './storage-provider.interface';
+import type { StorageProvider } from './storage-provider.interface';
+import { toResponseDto } from '../common/serialization';
+import { MediaFileResponseDto } from './dto/media-file-response.dto';
 
 export interface UploadFileOptions {
   buffer: Buffer;
@@ -23,54 +25,16 @@ export interface UploadFileOptions {
 }
 
 @Injectable()
-export class MediaService implements OnModuleInit {
+export class MediaService {
   private readonly logger = new Logger(MediaService.name);
-  private minioClient: Minio.Client;
-  private bucketName: string;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
-  ) {
-    const endPoint =
-      this.configService.get<string>('MINIO_ENDPOINT') || 'localhost';
-    const port = this.configService.get<number>('MINIO_PORT') || 9000;
-    const accessKey =
-      this.configService.get<string>('MINIO_ACCESS_KEY') || 'minioadmin';
-    const secretKey =
-      this.configService.get<string>('MINIO_SECRET_KEY') || 'minioadmin';
-    const useSSL = this.configService.get<string>('MINIO_USE_SSL') === 'true';
-
-    this.bucketName =
-      this.configService.get<string>('MINIO_BUCKET_NAME') || 'my-app-uploads';
-
-    this.minioClient = new Minio.Client({
-      endPoint,
-      port,
-      useSSL,
-      accessKey,
-      secretKey,
-    });
-  }
-
-  async onModuleInit() {
-    try {
-      const exists = await this.minioClient.bucketExists(this.bucketName);
-      if (!exists) {
-        await this.minioClient.makeBucket(this.bucketName, 'us-east-1');
-        this.logger.log(`Created MinIO bucket: ${this.bucketName}`);
-      }
-    } catch (err) {
-      const error = err as Error;
-      this.logger.error(
-        `MinIO initialization failed: ${error.message}`,
-        error.stack,
-      );
-    }
-  }
+    @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
+  ) {}
 
   /**
-   * Upload a file to MinIO and track it in Prisma
+   * Upload a file to object storage and track it in Prisma.
    */
   async uploadFile(options: UploadFileOptions) {
     const {
@@ -87,6 +51,7 @@ export class MediaService implements OnModuleInit {
     const fileId = crypto.randomUUID();
     const ext = path.extname(originalName);
     const safePurpose = (purpose || 'misc').toLowerCase();
+    const bucketName = this.storage.defaultBucket;
 
     let storagePath = '';
     if (tenantId) {
@@ -96,8 +61,8 @@ export class MediaService implements OnModuleInit {
     }
 
     try {
-      await this.minioClient.putObject(
-        this.bucketName,
+      await this.storage.putObject(
+        bucketName,
         storagePath,
         buffer,
         Number(size),
@@ -109,7 +74,7 @@ export class MediaService implements OnModuleInit {
           id: fileId,
           tenantId,
           uploadedById,
-          bucketName: this.bucketName,
+          bucketName,
           storagePath,
           originalName,
           mimeType,
@@ -119,7 +84,7 @@ export class MediaService implements OnModuleInit {
         },
       });
 
-      return mediaFile;
+      return toResponseDto(MediaFileResponseDto, mediaFile);
     } catch (error) {
       const err = error as Error;
       this.logger.error(
@@ -146,7 +111,7 @@ export class MediaService implements OnModuleInit {
       throw new NotFoundException('File not found');
     }
 
-    return this.minioClient.presignedGetObject(
+    return this.storage.getPresignedUrl(
       mediaFile.bucketName,
       mediaFile.storagePath,
       expiresInSecs,
@@ -154,7 +119,7 @@ export class MediaService implements OnModuleInit {
   }
 
   /**
-   * Delete a file (soft delete in DB, remove from MinIO)
+   * Delete a file (soft delete in DB, remove from object storage).
    */
   async deleteFile(mediaFileId: string) {
     const mediaFile = await this.prisma.mediaFile.findUnique({
@@ -164,7 +129,7 @@ export class MediaService implements OnModuleInit {
     if (!mediaFile) return;
 
     try {
-      await this.minioClient.removeObject(
+      await this.storage.removeObject(
         mediaFile.bucketName,
         mediaFile.storagePath,
       );

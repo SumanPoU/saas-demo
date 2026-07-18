@@ -58,34 +58,38 @@ pnpm start:dev
 - Swagger UI: `http://localhost:5000/docs` (disabled in production)
 
 ## Environment Variables
-Required (must be set, no fallback):
+Copy `.env.example` to `.env` or `.env.development.local` (never commit secrets).
+
+Required (must be set, no fallback — validated at startup):
 ```env
 DATABASE_URL=
 JWT_SECRET=            # ≥ 32 characters
 JWT_REFRESH_SECRET=    # ≥ 32 characters, different from JWT_SECRET
+MFA_ENCRYPTION_KEY=    # 64 hex chars / 32 bytes
 ```
 Recommended:
 ```env
-PORT=5000
+PORT=5000              # app default when unset
 NODE_ENV=development
 ALLOWED_ORIGINS=
 SEED_SUPERADMIN_PASSWORD=
 SEED_USER_PASSWORD=
 MAIL_USER=
 MAIL_PASS=
-MFA_ENCRYPTION_KEY=    # 64 hex chars / 32 bytes
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 GITHUB_CALLBACK_URL=
-MINIO_ENDPOINT=
+MINIO_ENDPOINT=        # required in production (no silent defaults)
 MINIO_PORT=
-MINIO_ACCESS_KEY=
-MINIO_SECRET_KEY=
+MINIO_ACCESS_KEY=      # required in production
+MINIO_SECRET_KEY=      # required in production
 MINIO_USE_SSL=
 MINIO_BUCKET_NAME=
+THROTTLE_AUTH_TTL=     # optional; also via GlobalConfig throttle.authTtl
+THROTTLE_AUTH_LIMIT=   # optional; also via GlobalConfig throttle.authLimit
 ```
 Any new required env var must be added to `.env.example` and validated at startup
 (fail fast — never silently fall back to a default for a security-sensitive value).
@@ -178,7 +182,7 @@ Any new required env var must be added to `.env.example` and validated at startu
 | Auth | `/auth/register/*`, `/auth/login`, `/auth/refresh`, `/auth/oauth/*` |
 | MFA | `/mfa/setup`, `/mfa/verify-login`, `/mfa/recover` |
 | Users | `/users`, `/users/me/profile` |
-| Tenants | `/tenants` |
+| Tenants | `/tenants`, `POST /tenants/restore` |
 | Members | `/tenants/:tenantId/members`, `/auth/invitations/accept` |
 | Roles | `/roles` |
 | Permissions | `/permissions`, `/permissions/groups` |

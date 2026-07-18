@@ -9,6 +9,7 @@ import {
   VersioningType,
   ValidationPipe,
   BadRequestException,
+  ClassSerializerInterceptor,
 } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from '@fastify/helmet';
@@ -84,8 +85,13 @@ async function bootstrap() {
   );
 
   // 6c. Global Interceptor & Filter
+  // ClassSerializerInterceptor is registered after ResponseInterceptor so it
+  // runs first on the outbound path (Nest LIFO) and applies @Exclude() before wrapping.
   const reflector = app.get(Reflector);
-  app.useGlobalInterceptors(new ResponseInterceptor(reflector));
+  app.useGlobalInterceptors(
+    new ResponseInterceptor(reflector),
+    new ClassSerializerInterceptor(reflector),
+  );
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   // 7. Swagger API Documentation Setup

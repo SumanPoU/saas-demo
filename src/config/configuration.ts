@@ -1,5 +1,5 @@
 export default () => ({
-  port: parseInt(process.env.PORT ?? '3000', 10),
+  port: parseInt(process.env.PORT ?? '5000', 10),
   node_env: process.env.NODE_ENV ?? 'development',
 
   cors: {

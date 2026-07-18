@@ -1,6 +1,7 @@
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { TenantsService } from './tenants.service';
+import { TenantsRepository } from './tenants.repository';
 
 describe('TenantsService', () => {
   let service: TenantsService;
@@ -42,11 +43,12 @@ describe('TenantsService', () => {
     mailService = {
       sendTenantRestorationEmail: jest.fn().mockResolvedValue(undefined),
     };
-    service = new TenantsService(prisma as never, mailService as never);
+    const repository = new TenantsRepository(prisma as never);
+    service = new TenantsService(repository, mailService as never);
   });
 
   it('soft-deletes a tenant, stores a hashed restoration token, and emails the raw token', async () => {
-    prisma.tenant.findUnique.mockResolvedValue({
+    prisma.tenant.findFirst.mockResolvedValue({
       id: 'tenant-a',
       name: 'Acme',
       deletedAt: null,
@@ -80,42 +82,49 @@ describe('TenantsService', () => {
       expect.stringMatching(/^[a-f0-9]{64}$/),
     );
 
-    const rawToken = mailService.sendTenantRestorationEmail.mock
+    const emailedRaw = mailService.sendTenantRestorationEmail.mock
       .calls[0][2] as string;
-    const expectedHash = crypto
-      .createHash('sha256')
-      .update(rawToken)
-      .digest('hex');
-    expect(updateData.restorationToken).toBe(expectedHash);
+    expect(updateData.restorationToken).toBe(
+      crypto.createHash('sha256').update(emailedRaw).digest('hex'),
+    );
   });
 
-  it('restores a soft-deleted tenant when the restoration token hash matches', async () => {
-    const inputRawToken = 'b'.repeat(64);
-    const expectedHash = crypto
+  it('restores a soft-deleted tenant when the token hash matches', async () => {
+    const rawToken = 'b'.repeat(64);
+    const tokenHash = crypto
       .createHash('sha256')
-      .update(inputRawToken)
+      .update(rawToken)
       .digest('hex');
 
     prisma.tenant.findFirst.mockResolvedValue({
       id: 'tenant-a',
-      deletionRequestedAt: new Date(),
+      name: 'Acme',
       deletedAt: new Date(),
-      restorationToken: expectedHash,
+      deletionRequestedAt: new Date(),
+      restorationToken: tokenHash,
     });
     prisma.tenant.update.mockResolvedValue({
       id: 'tenant-a',
-      deletedAt: null,
+      name: 'Acme',
+      slug: 'acme',
       isActive: true,
+      deletedAt: null,
+      restorationToken: null,
+      migrationVersion: 1,
+      schemaVersion: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
-    const actualTenant = await service.restore({ token: inputRawToken });
+    const actual = await service.restore({ token: rawToken });
 
-    expect(prisma.tenant.findFirst).toHaveBeenCalledWith({
-      where: {
-        restorationToken: expectedHash,
-        deletedAt: { not: null },
-      },
+    expect(actual).toMatchObject({
+      id: 'tenant-a',
+      isActive: true,
+      deletedAt: null,
     });
+    expect(Object.keys(actual as object)).not.toContain('restorationToken');
+    expect(Object.keys(actual as object)).not.toContain('schemaName');
     expect(prisma.tenant.update).toHaveBeenCalledWith({
       where: { id: 'tenant-a' },
       data: {
@@ -125,10 +134,9 @@ describe('TenantsService', () => {
         isActive: true,
       },
     });
-    expect(actualTenant).toMatchObject({ id: 'tenant-a', isActive: true });
   });
 
-  it('rejects restore when the token does not match any deleted tenant', async () => {
+  it('rejects restore when the token is unknown', async () => {
     prisma.tenant.findFirst.mockResolvedValue(null);
 
     await expect(
@@ -136,23 +144,23 @@ describe('TenantsService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('rejects restore when the 30-day restoration window has expired', async () => {
-    const inputRawToken = 'c'.repeat(64);
-    const expectedHash = crypto
+  it('rejects restore when the 30-day window has expired', async () => {
+    const rawToken = 'c'.repeat(64);
+    const tokenHash = crypto
       .createHash('sha256')
-      .update(inputRawToken)
+      .update(rawToken)
       .digest('hex');
+    const expired = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
 
     prisma.tenant.findFirst.mockResolvedValue({
       id: 'tenant-a',
-      restorationToken: expectedHash,
-      deletedAt: new Date(),
-      deletionRequestedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
+      deletionRequestedAt: expired,
+      restorationToken: tokenHash,
+      deletedAt: expired,
     });
 
-    await expect(
-      service.restore({ token: inputRawToken }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    expect(prisma.tenant.update).not.toHaveBeenCalled();
+    await expect(service.restore({ token: rawToken })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });

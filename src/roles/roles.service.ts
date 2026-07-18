@@ -5,7 +5,9 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { toResponseDto, toResponseDtoList } from '../common/serialization';
 import { CreateRoleDto, UpdateRoleDto } from './dto';
+import { RoleResponseDto } from './dto/role-response.dto';
 
 /** Authenticated user context used for tenant-scoped role operations. */
 export interface RolesRequestUser {
@@ -32,6 +34,15 @@ export class RolesService {
           ?.map((rolePermission) => rolePermission.permission)
           .filter(Boolean) ?? [],
     };
+  }
+
+  private toRoleResponse(role: unknown): RoleResponseDto {
+    return toResponseDto(
+      RoleResponseDto,
+      this.withPermissionsFromRolePermissions(
+        role as { rolePermissions?: RolePermissionWithPermission[] },
+      ),
+    );
   }
 
   /**
@@ -119,7 +130,7 @@ export class RolesService {
       },
     });
 
-    return this.withPermissionsFromRolePermissions(role);
+    return this.toRoleResponse(role);
   }
 
   /**
@@ -143,7 +154,10 @@ export class RolesService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return roles.map((role) => this.withPermissionsFromRolePermissions(role));
+    return toResponseDtoList(
+      RoleResponseDto,
+      roles.map((role) => this.withPermissionsFromRolePermissions(role)),
+    );
   }
 
   /**
@@ -171,7 +185,7 @@ export class RolesService {
       throw new NotFoundException(`Role with ID "${id}" not found`);
     }
 
-    return this.withPermissionsFromRolePermissions(role);
+    return this.toRoleResponse(role);
   }
 
   /**
@@ -216,7 +230,7 @@ export class RolesService {
       },
     });
 
-    return this.withPermissionsFromRolePermissions(updatedRole);
+    return this.toRoleResponse(updatedRole);
   }
 
   /**
@@ -241,9 +255,11 @@ export class RolesService {
       );
     }
 
-    return this.prisma.role.delete({
-      where: { id },
-    });
+    return this.toRoleResponse(
+      await this.prisma.role.delete({
+        where: { id },
+      }),
+    );
   }
 
   /**
@@ -433,8 +449,9 @@ export class RolesService {
       throw new NotFoundException(`User with ID "${userId}" not found`);
     }
 
-    return user.roles.map((role) =>
-      this.withPermissionsFromRolePermissions(role),
+    return toResponseDtoList(
+      RoleResponseDto,
+      user.roles.map((role) => this.withPermissionsFromRolePermissions(role)),
     );
   }
 
@@ -478,6 +495,6 @@ export class RolesService {
       },
     });
 
-    return role ? this.withPermissionsFromRolePermissions(role) : null;
+    return role ? this.toRoleResponse(role) : null;
   }
 }

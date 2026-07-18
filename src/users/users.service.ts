@@ -7,40 +7,19 @@ import {
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import { PrismaService } from '../prisma/prisma.service';
 import { PaginationService, PaginationQueryDto } from '../common/pagination';
+import { toResponseDto, toResponseDtoList } from '../common/serialization';
 import { MailService } from '../mail/mail.service';
 import { RuntimeConfigService } from '../config/runtime-config.service';
 import { MediaService } from '../media/media.service';
 import { CreateUserDto, UpdateUserDto, UpdateProfileDto } from './dto';
-
-const safeUserSelect = {
-  id: true,
-  username: true,
-  email: true,
-  emailVerified: true,
-  firstName: true,
-  lastName: true,
-  avatarUrl: true,
-  isActive: true,
-  isSuperAdmin: true,
-  mustChangePassword: true,
-  lastLoginAt: true,
-  createdAt: true,
-  updatedAt: true,
-  roles: {
-    select: {
-      id: true,
-      name: true,
-      description: true,
-    },
-  },
-} satisfies Prisma.UserSelect;
+import { UserResponseDto } from './dto/user-response.dto';
+import { safeUserSelect, UsersRepository } from './users.repository';
 
 @Injectable()
 export class UsersService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly usersRepository: UsersRepository,
     private readonly pagination: PaginationService,
     private readonly mailService: MailService,
     private readonly runtimeConfig: RuntimeConfigService,
@@ -58,21 +37,25 @@ export class UsersService {
       .replace(/[^a-z0-9]/g, '');
   }
 
+  private toUserResponse(user: unknown): UserResponseDto {
+    return toResponseDto(UserResponseDto, user);
+  }
+
   async createUser(dto: CreateUserDto, actorId: string) {
     const email = dto.email.toLowerCase();
     const username = this.deriveUsername(email, dto.username);
 
-    const existing = await this.prisma.user.findFirst({
-      where: { OR: [{ email }, { username }] },
-      select: { email: true, username: true },
-    });
+    const existing = await this.usersRepository.findExistingByEmailOrUsername(
+      email,
+      username,
+    );
 
     if (existing) {
       throw new ConflictException('User email or username already exists');
     }
 
     const roles = dto.roleIds?.length
-      ? await this.prisma.role.findMany({ where: { id: { in: dto.roleIds } } })
+      ? await this.usersRepository.findRolesByIds(dto.roleIds)
       : [];
 
     if (dto.roleIds?.length && roles.length !== dto.roleIds.length) {
@@ -85,28 +68,25 @@ export class UsersService {
 
     const defaultRole = dto.roleIds?.length
       ? null
-      : await this.prisma.role.findFirst({ where: { isDefault: true } });
+      : await this.usersRepository.findDefaultRole();
 
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        username,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        passwordHash,
-        passwordChangedAt: new Date(),
-        mustChangePassword: true,
-        isActive: dto.isActive ?? true,
-        emailVerified: true,
-        roles: {
-          connect: dto.roleIds?.length
-            ? dto.roleIds.map((id) => ({ id }))
-            : defaultRole
-              ? [{ id: defaultRole.id }]
-              : [],
-        },
+    const user = await this.usersRepository.createUser({
+      email,
+      username,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      passwordHash,
+      passwordChangedAt: new Date(),
+      mustChangePassword: true,
+      isActive: dto.isActive ?? true,
+      emailVerified: true,
+      roles: {
+        connect: dto.roleIds?.length
+          ? dto.roleIds.map((id) => ({ id }))
+          : defaultRole
+            ? [{ id: defaultRole.id }]
+            : [],
       },
-      select: safeUserSelect,
     });
 
     await this.mailService.sendTemporaryPassword(
@@ -115,16 +95,14 @@ export class UsersService {
       user.firstName ?? undefined,
     );
 
-    await this.prisma.auditLog.create({
-      data: {
-        actorId,
-        action: 'USER_CREATE',
-        entityType: 'User',
-        entityId: user.id,
-      },
+    await this.usersRepository.createAuditLog({
+      actorId,
+      action: 'USER_CREATE',
+      entityType: 'User',
+      entityId: user.id,
     });
 
-    return user;
+    return this.toUserResponse(user);
   }
 
   async getUsers(query: PaginationQueryDto, requestUser: any) {
@@ -146,11 +124,20 @@ export class UsersService {
       };
     }
 
-    return this.pagination.paginate(this.prisma.user, query, {
-      where,
-      select: safeUserSelect,
-      orderBy: { createdAt: 'desc' },
-    });
+    const result = await this.pagination.paginate(
+      this.usersRepository.client.user,
+      query,
+      {
+        where,
+        select: safeUserSelect,
+        orderBy: { createdAt: 'desc' },
+      },
+    );
+
+    return {
+      ...result,
+      data: toResponseDtoList(UserResponseDto, result.data),
+    };
   }
 
   async getUserById(id: string, requestUser: any) {
@@ -162,10 +149,7 @@ export class UsersService {
       };
     }
 
-    const user = await this.prisma.user.findFirst({
-      where,
-      select: safeUserSelect,
-    });
+    const user = await this.usersRepository.findFirst({ where });
 
     if (!user) {
       throw new NotFoundException(
@@ -173,17 +157,14 @@ export class UsersService {
       );
     }
 
-    return user;
+    return this.toUserResponse(user);
   }
 
   async updateUser(id: string, dto: UpdateUserDto, requestUser: any) {
     await this.getUserById(id, requestUser);
 
-    return this.prisma.user.update({
-      where: { id },
-      data: dto,
-      select: safeUserSelect,
-    });
+    const user = await this.usersRepository.updateUser(id, dto);
+    return this.toUserResponse(user);
   }
 
   async updateProfile(id: string, dto: UpdateProfileDto, file?: any) {
@@ -195,7 +176,7 @@ export class UsersService {
         originalName: file.originalname || file.filename,
         mimeType: file.mimetype,
         size: file.size || file.buffer.length,
-        tenantId: undefined, // User avatar is platform-level
+        tenantId: undefined,
         purpose: 'AVATAR',
         uploadedById: id,
       });
@@ -207,11 +188,8 @@ export class UsersService {
     if (dto.lastName !== undefined) dataToUpdate.lastName = dto.lastName;
     if (avatarUrl) dataToUpdate.avatarUrl = avatarUrl;
 
-    return this.prisma.user.update({
-      where: { id },
-      data: dataToUpdate,
-      select: safeUserSelect,
-    });
+    const user = await this.usersRepository.updateUser(id, dataToUpdate);
+    return this.toUserResponse(user);
   }
 
   async resetUserPassword(id: string, requestUser: any) {
@@ -221,24 +199,9 @@ export class UsersService {
     const actorId = requestUser.id || requestUser.userId;
     const passwordHash = await bcrypt.hash(temporaryPassword, saltRounds);
 
-    await this.prisma.user.update({
-      where: { id },
-      data: {
-        passwordHash,
-        passwordChangedAt: new Date(),
-        mustChangePassword: true,
-      },
-    });
-
-    await this.prisma.userSession.updateMany({
-      where: { userId: id, isRevoked: false },
-      data: { isRevoked: true, revokedAt: new Date(), revokedBy: actorId },
-    });
-
-    await this.prisma.refreshToken.updateMany({
-      where: { userId: id, isRevoked: false },
-      data: { isRevoked: true, revokedAt: new Date() },
-    });
+    await this.usersRepository.updatePassword(id, passwordHash);
+    await this.usersRepository.revokeSessions(id, actorId);
+    await this.usersRepository.revokeRefreshTokens(id);
 
     await this.mailService.sendTemporaryPassword(
       user.email,
@@ -246,13 +209,11 @@ export class UsersService {
       user.firstName ?? undefined,
     );
 
-    await this.prisma.auditLog.create({
-      data: {
-        actorId,
-        action: 'USER_PASSWORD_RESET_BY_ADMIN',
-        entityType: 'User',
-        entityId: id,
-      },
+    await this.usersRepository.createAuditLog({
+      actorId,
+      action: 'USER_PASSWORD_RESET_BY_ADMIN',
+      entityType: 'User',
+      entityId: id,
     });
 
     return this.getUserById(id, requestUser);
@@ -267,31 +228,18 @@ export class UsersService {
 
     const actorId = requestUser.id || requestUser.userId;
 
-    const user = await this.prisma.user.update({
-      where: { id },
-      data: { isActive: false },
-      select: safeUserSelect,
+    const user = await this.usersRepository.updateUser(id, { isActive: false });
+
+    await this.usersRepository.revokeSessions(id, actorId);
+    await this.usersRepository.revokeRefreshTokens(id);
+
+    await this.usersRepository.createAuditLog({
+      actorId,
+      action: 'USER_DELETE',
+      entityType: 'User',
+      entityId: id,
     });
 
-    await this.prisma.userSession.updateMany({
-      where: { userId: id, isRevoked: false },
-      data: { isRevoked: true, revokedAt: new Date(), revokedBy: actorId },
-    });
-
-    await this.prisma.refreshToken.updateMany({
-      where: { userId: id, isRevoked: false },
-      data: { isRevoked: true, revokedAt: new Date() },
-    });
-
-    await this.prisma.auditLog.create({
-      data: {
-        actorId,
-        action: 'USER_DELETE',
-        entityType: 'User',
-        entityId: id,
-      },
-    });
-
-    return user;
+    return this.toUserResponse(user);
   }
 }

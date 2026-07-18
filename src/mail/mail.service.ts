@@ -1,82 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-import { RuntimeConfigService } from '../config/runtime-config.service';
+import { Inject, Injectable } from '@nestjs/common';
+import { MAIL_PROVIDER } from './mail-provider.interface';
+import type { MailProvider } from './mail-provider.interface';
 
+/**
+ * Domain mail facade — semantic helpers over a swappable {@link MailProvider}.
+ */
 @Injectable()
 export class MailService {
-  private readonly logger = new Logger(MailService.name);
-
   constructor(
-    private readonly config: ConfigService,
-    private readonly runtimeConfig: RuntimeConfigService,
+    @Inject(MAIL_PROVIDER) private readonly mailProvider: MailProvider,
   ) {}
 
-  private cachedTransporter: nodemailer.Transporter | null = null;
-  private lastMailConfigHash = '';
-
-  private async createTransporter(): Promise<nodemailer.Transporter> {
-    const host = await this.runtimeConfig.getString('MAIL_HOST');
-    const port = await this.runtimeConfig.getNumber('MAIL_PORT');
-    const user = this.config.get<string>('mail.user');
-    const pass = this.config.get<string>('mail.pass');
-
-    // Safe dynamic SMTP initialization fallback
-    if (!user || !pass || user === 'mock-user') {
-      this.logger.warn(
-        'SMTP credentials not configured. Using console logger fallback for outgoing mail.',
-      );
-      return {
-        sendMail: async (options: any) => {
-          options.text = '[redacted]';
-          this.logger.log(
-            `\n=========================================\n📬 [MOCK MAIL SENT]\nTo: ${options.to}\nSubject: ${options.subject}\nText: ${options.text}\n=========================================\n`,
-          );
-          return { messageId: 'mock-id' };
-        },
-      } as any;
-    }
-
-    const configHash = `${host}:${port}`;
-    if (!this.cachedTransporter || this.lastMailConfigHash !== configHash) {
-      this.cachedTransporter = nodemailer.createTransport({
-        host,
-        port,
-        secure: port === 465, // true for 465, false for standard ports (e.g. 587/2525)
-        auth: {
-          user,
-          pass,
-        },
-      });
-      this.lastMailConfigHash = configHash;
-    }
-
-    return this.cachedTransporter;
-  }
-
-  /**
-   * Send a general text and HTML mail.
-   */
   async sendEmail(to: string, subject: string, text: string, html: string) {
-    const from = await this.runtimeConfig.getString('MAIL_FROM');
-    try {
-      const transporter = await this.createTransporter();
-      await transporter.sendMail({
-        from,
-        to,
-        subject,
-        text,
-        html,
-      });
-      this.logger.log(`Email successfully sent to: ${to}`);
-    } catch (error) {
-      this.logger.error(`Failed to send email to ${to}:`, error);
-    }
+    await this.mailProvider.sendEmail(to, subject, text, html);
   }
 
-  /**
-   * Outbox Helper 1: Send Registration OTP Code
-   */
   async sendRegistrationOtp(to: string, otp: string) {
     const subject = 'Verify Your Email Address';
     const text = `Your email verification OTP code is: ${otp}. This code is valid for 1 hour.`;
@@ -96,9 +34,6 @@ export class MailService {
     await this.sendEmail(to, subject, text, html);
   }
 
-  /**
-   * Outbox Helper 2: Send Email Verified Successfully Confirmation
-   */
   async sendEmailVerifiedNotification(to: string, name?: string) {
     const subject = 'Email Verified Successfully!';
     const userName = name || 'User';
@@ -116,9 +51,6 @@ export class MailService {
     await this.sendEmail(to, subject, text, html);
   }
 
-  /**
-   * Outbox Helper 3: Send Registration Completed / Welcome Email
-   */
   async sendWelcomeNotification(to: string, name?: string) {
     const subject = 'Welcome to Our Platform!';
     const userName = name || 'User';
@@ -136,9 +68,6 @@ export class MailService {
     await this.sendEmail(to, subject, text, html);
   }
 
-  /**
-   * Outbox Helper 4: Send Password Reset OTP Code
-   */
   async sendPasswordResetOtp(to: string, otp: string) {
     const subject = 'Reset Your Password';
     const text = `Your password reset code is: ${otp}. This code is valid for 1 hour.`;
@@ -158,9 +87,6 @@ export class MailService {
     await this.sendEmail(to, subject, text, html);
   }
 
-  /**
-   * Outbox Helper 5: Send Password Updated Success Alert
-   */
   async sendPasswordResetSuccessNotification(to: string, name?: string) {
     const subject = 'Your Password Was Reset Successfully';
     const userName = name || 'User';
@@ -178,9 +104,6 @@ export class MailService {
     await this.sendEmail(to, subject, text, html);
   }
 
-  /**
-   * Outbox Helper 6: Send New Device Verification Link
-   */
   async sendDeviceVerificationLink(to: string, verifyLink: string) {
     const subject = 'Authorize New Device Login';
     const text = `Authorize your new device by clicking this link: ${verifyLink}`;
@@ -224,9 +147,6 @@ export class MailService {
     await this.sendEmail(to, subject, text, html);
   }
 
-  /**
-   * Send MFA recovery email
-   */
   async sendMfaRecoveryEmail(to: string, recoveryLink: string) {
     const subject = 'Disable Multi-Factor Authentication Recovery Link';
     const text = `Please use this link to recover your account and disable MFA: ${recoveryLink}`;
@@ -247,9 +167,6 @@ export class MailService {
     return this.sendEmail(to, subject, text, html);
   }
 
-  /**
-   * Outbox Helper 7: Send workspace / tenant invitation with accept token
-   */
   async sendWorkspaceInvitation(
     to: string,
     workspaceName: string,
@@ -273,9 +190,6 @@ export class MailService {
     await this.sendEmail(to, subject, text, html);
   }
 
-  /**
-   * Outbox Helper 8: Send tenant soft-delete restoration token
-   */
   async sendTenantRestorationEmail(
     to: string,
     workspaceName: string,

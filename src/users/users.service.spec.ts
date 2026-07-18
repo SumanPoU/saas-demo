@@ -4,10 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { UsersRepository } from './users.repository';
 
 describe('UsersService', () => {
   let service: UsersService;
   let prisma: any;
+  let usersRepository: UsersRepository;
   let pagination: any;
   let mailService: any;
   let runtimeConfig: any;
@@ -45,6 +47,7 @@ describe('UsersService', () => {
         create: jest.fn(),
       },
     };
+    usersRepository = new UsersRepository(prisma);
     pagination = {
       paginate: jest.fn(),
     };
@@ -59,7 +62,7 @@ describe('UsersService', () => {
     };
 
     service = new UsersService(
-      prisma,
+      usersRepository,
       pagination,
       mailService,
       runtimeConfig,
@@ -84,7 +87,7 @@ describe('UsersService', () => {
       'admin-1',
     );
 
-    expect(result).toBe(safeUser);
+    expect(result).toMatchObject(safeUser);
     expect(prisma.user.findFirst).toHaveBeenCalledWith({
       where: {
         OR: [{ email: 'new.user@example.com' }, { username: 'newuser' }],

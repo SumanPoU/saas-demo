@@ -1,28 +1,15 @@
-import { ConfigService } from '@nestjs/config';
 import { MailService } from './mail.service';
+import { MailProvider } from './mail-provider.interface';
 
 describe('MailService', () => {
   let service: MailService;
+  let mailProvider: { sendEmail: jest.Mock };
 
   beforeEach(() => {
-    service = new MailService(
-      {
-        get: jest.fn((key: string) => {
-          const values: Record<string, string | number> = {
-            'mail.host': 'localhost',
-            'mail.port': 587,
-            'mail.user': 'mock-user',
-            'mail.pass': '',
-            'mail.from': '"Demo" <noreply@example.com>',
-          };
-          return values[key];
-        }),
-      } as unknown as ConfigService,
-      {
-        getString: jest.fn(),
-        getNumber: jest.fn(),
-      } as any,
-    );
+    mailProvider = {
+      sendEmail: jest.fn().mockResolvedValue(undefined),
+    };
+    service = new MailService(mailProvider as unknown as MailProvider);
   });
 
   it('sends temporary password email through the common sendEmail helper', async () => {
@@ -87,15 +74,26 @@ describe('MailService', () => {
 
     await service.sendTenantRestorationEmail(
       'owner@example.com',
-      'Acme Workspace',
+      'Acme',
       inputToken,
     );
 
     expect(sendEmail).toHaveBeenCalledWith(
       'owner@example.com',
-      'Restore your workspace: Acme Workspace',
+      'Restore your workspace: Acme',
       expect.stringContaining(inputToken),
       expect.stringContaining(inputToken),
+    );
+  });
+
+  it('delegates sendEmail to the injected mail provider', async () => {
+    await service.sendEmail('a@b.c', 'Subject', 'text', '<p>html</p>');
+
+    expect(mailProvider.sendEmail).toHaveBeenCalledWith(
+      'a@b.c',
+      'Subject',
+      'text',
+      '<p>html</p>',
     );
   });
 });

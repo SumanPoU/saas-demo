@@ -4,17 +4,19 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { toResponseDto, toResponseDtoList } from '../common/serialization';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { RestoreTenantDto } from './dto/restore-tenant.dto';
+import { TenantResponseDto } from './dto/tenant-response.dto';
+import { TenantsRepository } from './tenants.repository';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class TenantsService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly tenantsRepository: TenantsRepository,
     private readonly mailService: MailService,
   ) {}
 
@@ -33,117 +35,85 @@ export class TenantsService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
+  private toTenantResponse(tenant: unknown): TenantResponseDto {
+    return toResponseDto(TenantResponseDto, tenant);
+  }
+
   async create(userId: string, dto: CreateTenantDto) {
     const slug = dto.slug || this.generateSlug(dto.name);
 
-    const existing = await this.prisma.tenant.findUnique({ where: { slug } });
+    const existing = await this.tenantsRepository.findBySlug(slug);
     if (existing) {
       throw new ConflictException('Workspace slug already taken');
     }
 
     const schemaName = `tenant_${slug.replace(/-/g, '_')}`;
 
-    return this.prisma.$transaction(async (tx) => {
-      const tenant = await tx.tenant.create({
-        data: {
-          name: dto.name,
-          slug,
-          schemaName,
-          settings: dto.settings || {},
-        },
-      });
+    const tenant = await this.tenantsRepository.createWithOwner(
+      {
+        name: dto.name,
+        slug,
+        schemaName,
+        settings: dto.settings || {},
+      },
+      userId,
+    );
 
-      await tx.tenantMembership.create({
-        data: {
-          tenantId: tenant.id,
-          userId,
-          isOwner: true,
-        },
-      });
-
-      return tenant;
-    });
+    return this.toTenantResponse(tenant);
   }
 
   async findAll(userId: string, isSuperAdmin: boolean) {
-    if (isSuperAdmin) {
-      return this.prisma.tenant.findMany({
-        where: { deletedAt: null },
-      });
-    }
+    const tenants = isSuperAdmin
+      ? await this.tenantsRepository.findAllActive()
+      : await this.tenantsRepository.findAllForUser(userId);
 
-    return this.prisma.tenant.findMany({
-      where: {
-        deletedAt: null,
-        memberships: {
-          some: { userId },
-        },
-      },
-      include: {
-        memberships: {
-          where: { userId },
-          select: { isOwner: true },
-        },
-      },
-    });
+    return toResponseDtoList(TenantResponseDto, tenants);
   }
 
   async findOne(id: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id, deletedAt: null },
-    });
+    const tenant = await this.tenantsRepository.findActiveById(id);
     if (!tenant) throw new NotFoundException('Workspace not found');
-    return tenant;
+    return this.toTenantResponse(tenant);
   }
 
   async update(id: string, dto: UpdateTenantDto) {
     await this.findOne(id);
 
     if (dto.slug) {
-      const existing = await this.prisma.tenant.findFirst({
-        where: { slug: dto.slug, id: { not: id } },
-      });
+      const existing = await this.tenantsRepository.findBySlugExcludingId(
+        dto.slug,
+        id,
+      );
       if (existing) throw new ConflictException('Workspace slug already taken');
     }
 
-    return this.prisma.tenant.update({
-      where: { id },
-      data: dto,
-    });
+    const tenant = await this.tenantsRepository.update(id, dto);
+    return this.toTenantResponse(tenant);
   }
 
   /**
    * Soft-delete a workspace and email the owner a restoration token.
    */
   async remove(id: string, requesterUserId: string) {
-    const tenant = await this.findOne(id);
+    const tenant = await this.tenantsRepository.findActiveById(id);
+    if (!tenant) throw new NotFoundException('Workspace not found');
 
-    const ownerMembership = await this.prisma.tenantMembership.findFirst({
-      where: { tenantId: id, isOwner: true },
-      include: { user: { select: { id: true, email: true } } },
-    });
+    const ownerMembership =
+      await this.tenantsRepository.findOwnerMembership(id);
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const restorationToken = this.hashToken(rawToken);
 
-    await this.prisma.tenant.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
-        deletionRequestedAt: new Date(),
-        isActive: false,
-        restorationToken,
-      },
+    await this.tenantsRepository.update(id, {
+      deletedAt: new Date(),
+      deletionRequestedAt: new Date(),
+      isActive: false,
+      restorationToken,
     });
 
     const recipientEmail =
       ownerMembership?.user.email ??
-      (
-        await this.prisma.user.findUnique({
-          where: { id: requesterUserId },
-          select: { email: true },
-        })
-      )?.email;
+      (await this.tenantsRepository.findUserEmail(requesterUserId))?.email;
 
     if (recipientEmail) {
       await this.mailService.sendTenantRestorationEmail(
@@ -165,12 +135,8 @@ export class TenantsService {
   async restore(dto: RestoreTenantDto) {
     const tokenHash = this.hashToken(dto.token);
 
-    const tenant = await this.prisma.tenant.findFirst({
-      where: {
-        restorationToken: tokenHash,
-        deletedAt: { not: null },
-      },
-    });
+    const tenant =
+      await this.tenantsRepository.findByRestorationTokenHash(tokenHash);
 
     if (!tenant) {
       throw new NotFoundException('Invalid or expired restoration token');
@@ -186,14 +152,13 @@ export class TenantsService {
       );
     }
 
-    return this.prisma.tenant.update({
-      where: { id: tenant.id },
-      data: {
-        deletedAt: null,
-        deletionRequestedAt: null,
-        restorationToken: null,
-        isActive: true,
-      },
+    const restored = await this.tenantsRepository.update(tenant.id, {
+      deletedAt: null,
+      deletionRequestedAt: null,
+      restorationToken: null,
+      isActive: true,
     });
+
+    return this.toTenantResponse(restored);
   }
 }

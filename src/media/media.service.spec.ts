@@ -1,5 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { MediaService } from './media.service';
+import { StorageProvider } from './storage-provider.interface';
+import { MinioStorageProvider } from './minio-storage.provider';
 
 describe('MediaService', () => {
   let service: MediaService;
@@ -11,8 +13,13 @@ describe('MediaService', () => {
       update: jest.Mock;
     };
   };
-  let configService: { get: jest.Mock };
-  let minioPresign: jest.Mock;
+  let storage: {
+    defaultBucket: string;
+    putObject: jest.Mock;
+    getPresignedUrl: jest.Mock;
+    removeObject: jest.Mock;
+    ensureBucket: jest.Mock;
+  };
 
   beforeEach(() => {
     prisma = {
@@ -23,29 +30,31 @@ describe('MediaService', () => {
         update: jest.fn(),
       },
     };
-    configService = {
+    storage = {
+      defaultBucket: 'test-bucket',
+      putObject: jest.fn(),
+      getPresignedUrl: jest.fn().mockResolvedValue('https://minio/presigned'),
+      removeObject: jest.fn(),
+      ensureBucket: jest.fn(),
+    };
+
+    service = new MediaService(
+      prisma as never,
+      storage as unknown as StorageProvider,
+    );
+  });
+
+  it('fails fast in production when MinIO credentials are missing', () => {
+    const inputProdConfig = {
       get: jest.fn((key: string) => {
-        const values: Record<string, string | number> = {
-          MINIO_ENDPOINT: 'localhost',
-          MINIO_PORT: 9000,
-          MINIO_ACCESS_KEY: 'minioadmin',
-          MINIO_SECRET_KEY: 'minioadmin',
-          MINIO_USE_SSL: 'false',
-          MINIO_BUCKET_NAME: 'test-bucket',
-        };
-        return values[key];
+        if (key === 'node_env' || key === 'NODE_ENV') return 'production';
+        return undefined;
       }),
     };
 
-    service = new MediaService(prisma as never, configService as never);
-    minioPresign = jest.fn().mockResolvedValue('https://minio/presigned');
-    (
-      service as unknown as {
-        minioClient: { presignedGetObject: jest.Mock };
-      }
-    ).minioClient = {
-      presignedGetObject: minioPresign,
-    };
+    expect(() => new MinioStorageProvider(inputProdConfig as never)).toThrow(
+      /Missing required MinIO environment variable\(s\) in production/,
+    );
   });
 
   it('returns a download URL when the file belongs to the requested tenant', async () => {
@@ -63,6 +72,11 @@ describe('MediaService', () => {
     expect(prisma.mediaFile.findFirst).toHaveBeenCalledWith({
       where: { id: 'file-1', tenantId: 'tenant-a' },
     });
+    expect(storage.getPresignedUrl).toHaveBeenCalledWith(
+      'test-bucket',
+      'tenants/tenant-a/misc/file-1.png',
+      3600,
+    );
   });
 
   it('rejects download when the file belongs to another tenant', async () => {
@@ -75,6 +89,6 @@ describe('MediaService', () => {
     expect(prisma.mediaFile.findFirst).toHaveBeenCalledWith({
       where: { id: 'file-tenant-b', tenantId: 'tenant-a' },
     });
-    expect(minioPresign).not.toHaveBeenCalled();
+    expect(storage.getPresignedUrl).not.toHaveBeenCalled();
   });
 });
