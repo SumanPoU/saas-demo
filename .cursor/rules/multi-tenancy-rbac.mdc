@@ -1,0 +1,12 @@
+---
+description: Multi-tenant isolation and RBAC conventions
+globs: ["**/tenants/**/*.ts", "**/roles/**/*.ts", "**/permissions/**/*.ts", "**/tenant-members/**/*.ts"]
+alwaysApply: false
+---
+
+- Tenant context must be resolved once (from auth token or route param) and passed explicitly through the service layer — don't re-derive tenant context in multiple places per request
+- Every service method operating on tenant-scoped data takes `tenantId` as an explicit parameter — never implicit/global state
+- `@Roles()` and `@Permissions()` decorators enforce strict AND/OR logic as designed — don't bypass with manual role string comparisons in controllers
+- Tenant switching must re-issue tokens scoped to the new tenant; never mutate an existing token's tenant claim in place
+- Invitations and memberships: invite tokens are single-use and time-limited; accepting an invite must be idempotent (safe against double-submission)
+- Permission checks fail closed: if a permission/role lookup fails or returns ambiguous data, deny access rather than defaulting to allow

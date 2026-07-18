@@ -1,0 +1,12 @@
+---
+description: Testing, linting, and commit conventions
+globs: ["**/*.spec.ts", "**/*.e2e-spec.ts"]
+alwaysApply: false
+---
+
+- Every new service method that contains business logic gets a unit test with mocked Prisma/repository dependencies (use Nest's `Test.createTestingModule`)
+- Auth, MFA, and RBAC logic require test coverage for both success and failure/edge paths (expired token, reused token, wrong tenant, insufficient permission) — not just the happy path
+- E2E tests (`test:e2e`) cover full request flows for auth (register → login → refresh → logout) and any new critical flow
+- Run `pnpm lint` and `pnpm format` before considering a change complete; don't disable ESLint rules inline without justification
+- Use Commitizen conventional commits (`pnpm commit`) — don't hand-write non-conventional commit messages for anything touching shared history
+- Never commit `.env`, real secrets, or test fixtures containing real tokens/credentials

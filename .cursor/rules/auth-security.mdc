@@ -1,0 +1,29 @@
+---
+description: Authentication, MFA, session, and security-hardening conventions
+globs: ["**/auth/**/*.ts", "**/mfa/**/*.ts", "**/*.guard.ts", "**/*.strategy.ts"]
+alwaysApply: false
+---
+
+## Tokens & sessions
+- Access and refresh tokens are always signed with separate secrets (`JWT_SECRET` vs `JWT_REFRESH_SECRET`), each ≥ 32 chars, loaded from validated config
+- Implement/preserve refresh token rotation (RTR): rotating a refresh token invalidates its predecessor; reuse of an already-rotated token revokes the entire token family
+- Every issued token has a narrow, explicit `purpose` claim (e.g. `mfa_pending`, `device_verify`, `password_reset`) — guards must reject tokens used outside their intended purpose
+- Password changes stamp `passwordChangedAt` and any token issued before that timestamp must be rejected, even if not expired
+- Sessions must carry a `sessionId`; guards must explicitly reject requests missing it rather than treating it as optional
+
+## MFA
+- TOTP secrets are encrypted at rest (`MFA_ENCRYPTION_KEY`), never stored or logged in plaintext
+- Backup codes are single-use — mark `isUsed: true` immediately on redemption, in the same transaction as the check
+- MFA recovery tokens live in their own table/model, fully segregated from password-reset tokens — do not reuse one token type for both flows
+- Enforce replay protection on TOTP verification (reject a code already used within its validity window)
+
+## OAuth
+- Validate the `state` parameter on every OAuth callback to prevent CSRF — reject callbacks with missing/mismatched state
+- Never log OAuth tokens or authorization codes
+
+## General hardening
+- One-time tokens (OTP, reset, invite) must be marked used/invalidated immediately after successful verification, inside the same transaction as the action they gate
+- Unknown device/IP login triggers device verification before granting a full session — do not skip this for "convenience"
+- All public (unauthenticated) route handlers must safely handle missing/malformed tokens and log via the project's `Logger`, never throw unhandled exceptions
+- Never return different error messages for "user not found" vs "wrong password" on login (prevents user enumeration)
+- Rate-limit auth-sensitive endpoints (login, OTP request, password reset) using `@nestjs/throttler` per existing config

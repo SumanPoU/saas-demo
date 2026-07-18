@@ -1,0 +1,36 @@
+---
+description: Project-wide conventions for the SaaS NestJS backend
+alwaysApply: true
+---
+
+## Stack
+- Node.js ≥ 20, pnpm ≥ 9 (never use npm/yarn commands or lockfiles)
+- NestJS 11 with Fastify adapter (not Express) — use Fastify-compatible packages only
+- PostgreSQL + Prisma ORM (no TypeORM/Sequelize patterns)
+- TypeScript strict mode for all new code
+- Custom JWT/bcrypt auth — do NOT introduce Passport.js or other auth middleware
+
+## Dependency management
+- Always use `pnpm add` / `pnpm add -D` — never edit package.json manually then run install
+- Use `-D` for anything that's build/test/lint tooling only; runtime deps go without the flag
+- Check if a capability already exists in the codebase (common/, existing modules) before adding a new package
+
+## Imports
+- Use relative imports within a module/feature folder (e.g. `./dto/login.dto`)
+- Use barrel exports (`index.ts`) per feature folder to expose its public surface; import from the barrel outside the folder, not deep-imported internal files
+- Never import Prisma-generated types directly into controllers — go through DTOs
+
+## Code style
+- Full TypeScript types on all function params, return types, and class properties — no implicit `any`
+- Prefer `interface` for object shapes, `type` for unions/utility types
+- Async/await only — no raw `.then()` chains
+- Errors are always typed exceptions (NestJS HttpException subclasses), never thrown strings/objects
+
+## Response shape
+- All API responses use the project's standard envelope (see `common/`) — do not return raw Prisma objects or ad hoc shapes
+- Version all new routes under `/api/v1` (or current version) per existing convention
+
+## Environment & secrets
+- Never hardcode secrets, tokens, or credentials — read via a validated config service
+- Never commit `.env*`, seeded passwords, OTPs, recovery links, or refresh tokens
+- Any new required env var must be added to `.env.example` and validated at startup (fail fast, not silent fallback)

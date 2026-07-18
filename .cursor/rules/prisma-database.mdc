@@ -1,0 +1,16 @@
+---
+description: Prisma schema, migrations, and query conventions
+globs: ["prisma/**/*.prisma", "**/*.repository.ts", "**/prisma.service.ts"]
+alwaysApply: false
+---
+
+- Every schema change goes through `pnpm db:migrate` (dev) — never hand-edit the database or use `db push` outside prototyping
+- Run `pnpm db:generate` after any schema change before writing code against new fields/models
+- On Windows/local dev, stop the running Nest process before `prisma generate` to avoid `EPERM` file-lock errors
+- Use soft-delete (`deletedAt`/`isActive` pattern) for tenants and other records with restoration requirements — never hard-delete tenant-owned data
+- All multi-tenant models must include a `tenantId` (or equivalent) column with a non-optional foreign key — no tenant-scoped table without it
+- Every query against a tenant-scoped model must filter by `tenantId` explicitly — never rely solely on route-level guards to prevent cross-tenant data leaks
+- Use Prisma transactions (`$transaction`) for any multi-step write that must be atomic (e.g. user creation + role assignment, subscription + invoice creation)
+- Index foreign keys and frequently filtered columns (tenantId, email, status) in the schema
+- Never expose raw Prisma error messages to API responses — catch and map to generic, safe error messages
+- Seed scripts (`db:seed`) must use env-driven passwords (`SEED_SUPERADMIN_PASSWORD`, etc.) — never hardcode seed credentials

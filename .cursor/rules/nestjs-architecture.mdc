@@ -1,0 +1,33 @@
+---
+description: NestJS module/layering rules — SOLID applied to controllers/services/repositories
+globs: ["**/*.module.ts", "**/*.controller.ts", "**/*.service.ts", "**/*.dto.ts", "**/*.guard.ts", "**/*.interceptor.ts"]
+alwaysApply: false
+---
+
+## Layering (Single Responsibility)
+- Controller: routing, request/response shaping, calling one service method — no business logic, no direct Prisma calls
+- Service: business logic only — no `@Req`/`@Res`, no knowledge of HTTP status codes
+- Repository/Prisma access: isolate Prisma calls in a dedicated provider (e.g. `*.repository.ts` or the module's Prisma-facing service) — don't scatter `this.prisma.x` calls across multiple services for the same model
+
+## Dependency Injection (Dependency Inversion)
+- Always inject via constructor; never `new` a service/provider manually
+- Depend on abstractions (interfaces) for anything that could have multiple implementations (e.g. storage provider, mail provider) so swapping MinIO/SMTP providers doesn't touch business logic
+
+## Module boundaries (Interface Segregation)
+- One module per domain (auth, mfa, tenants, billing, media, etc.) matching the existing `src/` structure
+- Only export providers a module's consumers actually need from its `*.module.ts` — don't export everything by default
+- Cross-module access goes through the exporting module's public service, never by reaching into another module's internals
+
+## Open/Closed
+- Extend behavior via new guards/interceptors/strategies rather than adding conditional branches to existing shared guards (e.g. don't add tenant-specific `if` checks into the global auth guard — write a composable guard)
+- New MFA methods, OAuth providers, or billing providers should implement a shared interface/strategy pattern, not fork existing service logic
+
+## DTOs & validation
+- Every request body/query/param has a DTO with `class-validator` decorators
+- DTOs are separate from Prisma models — never return a Prisma entity directly; map to a response DTO
+- Use `class-transformer` `@Exclude()` on sensitive fields (password hashes, MFA secrets, tokens) at the DTO level, not by manual deletion in controllers
+
+## Guards, Interceptors, Pipes
+- AuthN → Guard; AuthZ (roles/permissions/tenant scoping) → Guard; response shaping/logging → Interceptor; input coercion/validation → Pipe
+- Use `@Roles()` / `@Permissions()` / `@Public()` decorators consistently — don't hand-roll auth checks inside controller methods
+- Any guard touching `sessionId`, `mfa_pending`, or tenant context must fail closed (deny by default) on missing/malformed data

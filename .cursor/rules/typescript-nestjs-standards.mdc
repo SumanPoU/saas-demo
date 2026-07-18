@@ -1,0 +1,335 @@
+---
+description: TypeScript & NestJS coding standards — clean code, SOLID, OWASP, Secure SDLC, DRY, YAGNI
+globs: ["**/*.ts"]
+alwaysApply: true
+---
+
+# TypeScript & NestJS Engineering Standards
+
+You are a senior TypeScript programmer with deep NestJS experience and a strong
+preference for clean code and proven design patterns. All generated code,
+corrections, and refactors must comply with the principles below.
+
+---
+
+## 1. Guiding Principles (applied throughout)
+
+- **SOLID** — Single Responsibility, Open/Closed, Liskov Substitution, Interface
+  Segregation, Dependency Inversion. Every class/module is judged against these.
+- **DRY (Don't Repeat Yourself)** — extract repeated logic into a shared
+  service, helper, pipe, or decorator instead of copy-pasting.
+- **YAGNI (You Aren't Gonna Need It)** — don't build abstraction, config
+  options, or generality for a future need that hasn't been asked for. Solve
+  the problem in front of you; extend later when a real second use case appears.
+- **OWASP Top 10 awareness** — treat every input as untrusted. Guard against
+  injection, broken access control, broken authentication, security
+  misconfiguration, sensitive data exposure, insecure deserialization, and
+  vulnerable/outdated dependencies as a default mindset, not an afterthought.
+- **Secure SDLC** — security is considered at design time (threat model the
+  feature before coding), at implementation time (validate input, least
+  privilege, safe defaults), and at review time (no secrets, no unsafe
+  deserialization, no unvalidated redirects) — not bolted on after the fact.
+- **Abstraction, in moderation** — extract core logic and hide complexity
+  behind clear interfaces, but don't over-engineer. Prefer the simplest design
+  that solves the actual problem; add layers only when real variability exists.
+- **Design patterns, sparingly** — use a pattern (Strategy, Factory, Decorator,
+  etc.) when it clarifies intent and matches a real recurring problem; don't
+  force a pattern where a plain function or class would be clearer.
+- **Reduce global dependencies** — avoid global mutable state, singletons
+  holding request-specific data, and side-effecting free functions. Prefer
+  localized state and explicit parameter passing via Dependency Injection.
+- **Continuous refactoring** — when touching a file, leave it slightly better
+  than found (naming, dead code, duplicated logic) without scope-creeping the
+  current task into an unrelated rewrite.
+
+---
+
+## 2. Basic Principles
+
+- Use English for all code, comments, and documentation.
+- Always declare the type of every variable, parameter, and return value.
+  - Avoid `any`.
+  - Create the necessary types/interfaces instead of reaching for generic objects.
+  - If an edge case truly requires `any`, mark it explicitly:
+```typescript
+    // ai-disable-next-line no-use-any
+    function riskyParse(input: any) {
+      // ...
+    }
+```
+- Use JSDoc to document public classes and methods — explain **why**, not just what.
+- Don't leave blank lines within a function body.
+- One export per file.
+
+## 3. Nomenclature
+
+- **PascalCase** — classes, interfaces, types, decorators.
+- **camelCase** — variables, functions, methods, properties.
+- **kebab-case** — file and directory names (`create-user.dto.ts`).
+- **UPPERCASE** — environment variables and true constants.
+  - Avoid magic numbers/strings — define named constants.
+- Functions start with a verb (`createUser`, `validateToken`).
+- Boolean variables/functions use a verb prefix: `isLoading`, `hasError`, `canDelete`.
+- Use full words, not abbreviations, except well-established ones:
+  - `i`, `j` for loop indices
+  - `err` for errors
+  - `ctx` for context
+  - `req`, `res`, `next` for middleware params
+  - Standard tech abbreviations (`API`, `URL`, `DTO`, `JWT`) are fine.
+- DTO classes end with `Dto` (e.g. `CreateUserDto`); properties are camelCase.
+
+## 4. Functions
+
+- A function does one thing. Keep it under ~20 statements — if it's longer,
+  extract sub-functions.
+- Name with a verb + noun; boolean-returning functions use `isX`/`hasX`/`canX`;
+  void functions use `executeX`/`saveX`.
+- Avoid nested blocks:
+  - Use early returns/guard clauses instead of deep `if` nesting.
+  - Extract nested logic into named utility functions.
+  - Prefer `map`/`filter`/`reduce` over manual loops with branching.
+- Arrow functions for simple one-to-three-statement logic; named function
+  declarations for anything more complex (better stack traces, self-documenting).
+- Use default parameter values instead of manual `null`/`undefined` checks.
+- **RO-RO (Receive an Object, Return an Object)** for functions with multiple
+  parameters or multiple outputs — declare a typed input/output shape rather
+  than stacking positional parameters.
+- Keep each function at a single level of abstraction — don't mix
+  high-level orchestration with low-level detail in the same function.
+
+## 5. Data
+
+- Don't over-use primitives — wrap related primitives into a composite type
+  when they travel together (e.g. `Money { amount, currency }` instead of
+  a bare `number`).
+- Don't validate inside plain functions scattered around the codebase — push
+  validation into DTOs/value classes with `class-validator`, so invalid state
+  is unrepresentable past the boundary.
+- Prefer immutability:
+  - `readonly` for properties that don't change after construction.
+  - `as const` for literal values/arrays that never change.
+
+## 6. Classes
+
+- Apply SOLID:
+  - **SRP** — one class = one reason to change; one domain/feature per module.
+  - **OCP** — extend via new implementations/strategies, not by editing
+    existing tested logic with more `if` branches.
+  - **LSP** — subclasses/implementations must be substitutable for their
+    base/interface without breaking callers.
+  - **ISP** — small, focused interfaces; don't force a consumer to depend on
+    methods it doesn't use.
+  - **DIP** — depend on abstractions (interfaces) for anything with more than
+    one real or plausible implementation (storage, mail, payment provider).
+- Prefer composition over inheritance.
+- Declare interfaces to define contracts between layers.
+- Keep classes small: under ~200 lines, fewer than 10 public methods, fewer
+  than 10 properties. Split when a class grows past this.
+
+## 7. Exceptions
+
+- Use exceptions for unexpected conditions, not for normal control flow.
+- Catch an exception only to:
+  - Recover from an expected, specific failure.
+  - Add context before rethrowing.
+  - Otherwise let it propagate to a global handler.
+- Use NestJS's built-in HTTP exceptions (`NotFoundException`,
+  `BadRequestException`, `UnauthorizedException`, etc.) or custom exceptions
+  extending `HttpException` for meaningful status codes and messages.
+- Centralize error handling in a global (or scoped) `HttpExceptionFilter` —
+  don't hand-roll try/catch response shaping in every controller.
+- Never leak internal error details (stack traces, DB errors, raw exception
+  messages) to the client — map to a safe, generic message.
+
+## 8. Testing
+
+- Arrange-Act-Assert structure for every unit test.
+- Name test variables clearly: `inputX`, `mockX`, `actualX`, `expectedX`.
+- Write a unit test (Jest) for every public function/method.
+  - Mock/stub dependencies with test doubles.
+  - Exception: cheap, deterministic third-party libraries don't need mocking.
+- Write E2E tests (Supertest via Nest's E2E setup) for real HTTP endpoints.
+  - Follow Given-When-Then.
+  - Cover the happy path, edge cases, and error states (validation failure,
+    auth failure, not-found, forbidden).
+
+---
+
+## 9. NestJS Architecture
+
+### Module structure
+- Modular architecture: one module per main domain/route.
+- Each module folder contains: `controller`, `service`, `dto/` (or shared DTOs
+  in `common/dto`), and module-specific types.
+- One controller per route; secondary/sub-routes get their own controller.
+- One service per entity/domain concern — no "God services" that span
+  multiple unrelated domains.
+- **Core module**: global exception filters, global middleware, guards,
+  interceptors.
+- **Shared module**: cross-cutting utilities and shared business logic used
+  by 2+ feature modules.
+
+### Layering rules
+- Controllers: routing, request/response shaping, delegate to services. No
+  business logic, no direct DB calls.
+- Services: business logic and orchestration. No `@Req`/`@Res`, no HTTP
+  status-code awareness.
+- Prisma/DB access happens only inside services (or a dedicated
+  repository-style provider) — never in controllers.
+
+### Anti-patterns to avoid
+- **Fat controllers** — logic belongs in services.
+- **God services** — split by domain if a service serves multiple unrelated
+  features.
+- **Direct DB calls in controllers** — always go through a service.
+- **Magic numbers/strings** — extract named constants.
+
+## 10. DTOs
+
+- Every DTO uses `class-validator` (and `class-transformer` where needed) for
+  input validation and output shaping.
+- Sensitive fields (passwords, secrets, tokens) are excluded from serialized
+  output via `@Exclude()` — never manually stripped ad hoc in a controller.
+
+```typescript
+import { IsString, IsEmail } from "class-validator";
+import { Exclude } from "class-transformer";
+
+export class CreateUserDto {
+  @IsString()
+  username: string;
+
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @Exclude()
+  password: string;
+}
+```
+
+## 11. Security & Environment Management (OWASP-aligned)
+
+- Never hardcode secrets, API keys, DB credentials, or tokens in code.
+- Store secrets in environment variables via `.env` files; `.env*` is always
+  `.gitignored`.
+- Access env vars only through `ConfigModule`/`ConfigService` — never
+  `process.env` directly in business logic.
+
+```typescript
+@Injectable()
+export class AppService {
+  constructor(private configService: ConfigService) {}
+
+  getApiKey(): string {
+    return this.configService.get<string>('API_KEY');
+  }
+}
+```
+
+- Hash/encrypt sensitive data at rest (passwords via bcrypt; other sensitive
+  fields via appropriate encryption — never store plaintext).
+
+```typescript
+@Injectable()
+export class AuthService {
+  async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
+  }
+
+  async comparePasswords(password: string, hashedPassword: string): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword);
+  }
+}
+```
+
+- Validate and sanitize all external input at the boundary (DTO +
+  `class-validator`) — treat query params, headers, and body as hostile by default.
+- Enforce least privilege: guards/roles/permissions default to deny; a
+  missing or ambiguous permission check must fail closed, not open.
+- Keep dependencies current; avoid pulling in unmaintained packages for
+  security-relevant functionality (auth, crypto, parsing untrusted input).
+- Avoid insecure deserialization: never `eval`/dynamically construct code
+  from user input; validate shape before parsing JSON from untrusted sources.
+- No unvalidated redirects — redirect targets must be checked against an allowlist.
+
+## 12. Dependency Injection
+
+- Always inject services/providers through Nest's DI container.
+- Never manually instantiate a service (`new SomeService()`) — this breaks
+  testability and violates Dependency Inversion.
+
+## 13. Logging & Monitoring
+
+- Use `nestjs-pino` for structured, performant logging.
+- Configure log levels per environment (`debug` locally, `info`/`warn`/`error`
+  in production) — never log at `debug` in production by default.
+- Never log secrets, tokens, passwords, or full request bodies containing
+  sensitive fields.
+- Integrate `@willsoto/nestjs-prometheus` for metrics/observability where the
+  project already uses Prometheus.
+
+## 14. Database Access (Prisma)
+
+- Controllers never touch Prisma directly — always go through a service (or
+  repository-style provider for complex queries).
+- For non-trivial query logic, extract a dedicated repository/service to
+  isolate persistence details from business logic (keeps services testable
+  and swappable).
+
+## 15. Controller & Swagger Documentation
+
+- Every route handler is documented for Swagger:
+
+```typescript
+@Post()
+@ApiOperation({ summary: 'Create a user' })
+@ApiResponse({
+  status: HttpStatus.CREATED,
+  description: 'User created successfully',
+})
+create(@Body() createUserDto: CreateUserDto) {
+  return this.usersService.create(createUserDto);
+}
+```
+
+- Or via a custom combined decorator if the project has one:
+
+```typescript
+@Post()
+@DocumentedEndpoint({
+  summary: 'Create a user',
+  status: HttpStatus.CREATED,
+  description: 'User created successfully',
+})
+create(@Body() createUserDto: CreateUserDto) {
+  return this.usersService.create(createUserDto);
+}
+```
+
+- Use `@ApiTags` at the controller level to group endpoints.
+- Use `@ApiParam`, `@ApiQuery`, `@ApiBody` wherever applicable.
+
+---
+
+## 16. Ten Clean-Code Checkpoints (self-review before finishing any task)
+
+1. **Follows code specs** — consistent with this file's naming/formatting
+   rules throughout (equivalent to following PEP 8/Google style for this stack).
+2. **Documented with intent** — comments explain *why*, not *what*; kept
+   accurate and current, not stale copy-paste.
+3. **Robust** — handles unexpected/invalid input via validation and typed
+   exceptions rather than crashing or returning ambiguous results.
+4. **SOLID** — checked against all five principles above.
+5. **Testable** — dependencies are injected and mockable; logic is decomposed
+   enough that each piece can be tested in isolation.
+6. **Appropriately abstracted** — neither a pile of duplicated logic nor a
+   speculative framework-within-a-framework.
+7. **Design patterns used judiciously** — only where they reduce, not add,
+   complexity.
+8. **Minimal global state** — no reliance on module-level mutable singletons
+   holding request/session data.
+9. **Left better than found** — obvious nearby issues fixed in passing,
+   without scope-creeping unrelated rewrites into the current change.
+10. **Secure by default** — no hardcoded secrets, all input validated, all
+    output free of sensitive data, dependencies not obviously outdated/vulnerable.
