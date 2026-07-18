@@ -487,11 +487,13 @@ describe('AuthService', () => {
     jwtService.verifyAsync.mockResolvedValue({
       sub: 'user-1',
       sessionId: 'session-1',
+      purpose: 'refresh',
     });
     prisma.refreshToken.findUnique.mockResolvedValue({
       id: 'refresh-token-1',
       sessionId: 'session-1',
       userId: 'user-1',
+      tenantId: 'tenant-1',
       familyId: 'family-1',
       isUsed: false,
       isRevoked: false,
@@ -506,11 +508,15 @@ describe('AuthService', () => {
         email: 'temp.user@example.com',
         username: 'tempuser',
         isActive: true,
+        isSuperAdmin: false,
         passwordChangedAt: null,
         roles: [],
       },
     });
     prisma.user.findUnique.mockResolvedValue(authPayloadUser);
+    jwtService.signAsync
+      .mockResolvedValueOnce('access-token')
+      .mockResolvedValueOnce('refresh-token');
 
     const result = await service.refresh({ refreshToken: 'old-refresh' });
 
@@ -638,5 +644,81 @@ describe('AuthService', () => {
         revokedAt: expect.any(Date),
       },
     });
+  });
+
+  it('rejects Google OAuth when state is missing', async () => {
+    await expect(
+      service.googleLogin('mock-code', undefined, 'expected-state'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects Google OAuth when expectedState is missing', async () => {
+    await expect(
+      service.googleLogin('mock-code', 'state-value', undefined),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects Google OAuth when state and expectedState mismatch', async () => {
+    await expect(
+      service.googleLogin('mock-code', 'state-a', 'state-b'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects refresh tokens missing the purpose claim', async () => {
+    jwtService.verifyAsync.mockResolvedValue({
+      sub: 'user-1',
+      sessionId: 'session-1',
+    });
+
+    await expect(
+      service.refresh({ refreshToken: 'legacy-refresh' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(prisma.refreshToken.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('rejects refresh tokens with the wrong purpose', async () => {
+    jwtService.verifyAsync.mockResolvedValue({
+      sub: 'user-1',
+      sessionId: 'session-1',
+      purpose: 'access',
+    });
+
+    await expect(
+      service.refresh({ refreshToken: 'access-used-as-refresh' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(prisma.refreshToken.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('issues access and refresh tokens with explicit purpose claims', async () => {
+    jwtService.signAsync
+      .mockResolvedValueOnce('access-token')
+      .mockResolvedValueOnce('refresh-token');
+    prisma.userSession.create.mockResolvedValue({
+      id: 'session-1',
+    });
+    prisma.refreshToken.create.mockResolvedValue({});
+    prisma.auditLog.create.mockResolvedValue({});
+    prisma.user.findUnique.mockResolvedValue(authPayloadUser);
+
+    await service.establishSessionAndIssueTokens(
+      {
+        id: 'user-1',
+        email: 'temp.user@example.com',
+        username: 'tempuser',
+        isSuperAdmin: false,
+      },
+      'tenant-1',
+    );
+
+    expect(jwtService.signAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ purpose: 'access' }),
+      expect.any(Object),
+    );
+    expect(jwtService.signAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ purpose: 'refresh' }),
+      expect.any(Object),
+    );
   });
 });

@@ -64,7 +64,7 @@ export class RolesController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createRole(@Body() dto: CreateRoleDto, @CurrentUser() user: any) {
-    return this.rolesService.createRole(dto, user.id);
+    return this.rolesService.createRole(dto, user);
   }
 
   @Get()
@@ -207,8 +207,8 @@ export class RolesController {
   })
   @ApiResponse({ status: 404, description: 'Role not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async deleteRole(@Param('id') id: string) {
-    await this.rolesService.deleteRole(id);
+  async deleteRole(@Param('id') id: string, @CurrentUser() user: any) {
+    await this.rolesService.deleteRole(id, user);
   }
 
   @Post(':id/permissions')
@@ -242,6 +242,7 @@ export class RolesController {
     return this.rolesService.assignPermissionsToRole(
       roleId,
       dto.permissionIds,
+      user,
       user.id,
     );
   }
@@ -261,10 +262,12 @@ export class RolesController {
   async removePermissionsFromRole(
     @Param('id') roleId: string,
     @Body() dto: AssignPermissionsDto,
+    @CurrentUser() user: any,
   ) {
     await this.rolesService.removePermissionsFromRole(
       roleId,
       dto.permissionIds,
+      user,
     );
   }
 
@@ -294,8 +297,9 @@ export class RolesController {
   async assignRoleToUsers(
     @Param('id') roleId: string,
     @Body() dto: AssignUsersDto,
+    @CurrentUser() user: any,
   ) {
-    return this.rolesService.assignRoleToUsers(roleId, dto.userIds);
+    return this.rolesService.assignRoleToUsers(roleId, dto.userIds, user);
   }
 
   @Delete(':id/users')
@@ -313,7 +317,8 @@ export class RolesController {
   async removeRoleFromUsers(
     @Param('id') roleId: string,
     @Body() dto: AssignUsersDto,
+    @CurrentUser() user: any,
   ) {
-    await this.rolesService.removeRoleFromUsers(roleId, dto.userIds);
+    await this.rolesService.removeRoleFromUsers(roleId, dto.userIds, user);
   }
 }

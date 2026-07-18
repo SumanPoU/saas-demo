@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   InitiateRegisterDto,
@@ -28,6 +29,9 @@ import { RuntimeConfigService } from '../config/runtime-config.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
+/** JWT purpose claim values for access vs refresh tokens. */
+type JwtPurpose = 'access' | 'refresh';
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -39,6 +43,29 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly runtimeConfig: RuntimeConfigService,
   ) {}
+
+  /**
+   * Require OAuth CSRF state and compare with constant-time equality.
+   */
+  private assertOAuthState(state?: string, expectedState?: string): void {
+    if (!state || !expectedState) {
+      throw new UnauthorizedException(
+        'OAuth state is required to prevent CSRF attacks.',
+      );
+    }
+
+    const stateBuf = Buffer.from(state);
+    const expectedBuf = Buffer.from(expectedState);
+
+    if (
+      stateBuf.length !== expectedBuf.length ||
+      !crypto.timingSafeEqual(stateBuf, expectedBuf)
+    ) {
+      throw new UnauthorizedException(
+        'OAuth state mismatch. Possible CSRF attack.',
+      );
+    }
+  }
 
   /**
    * Step 1: Initiate User Registration
@@ -572,18 +599,25 @@ export class AuthService {
    * Shared between standard credential logins and MFA logins.
    */
   public async establishSessionAndIssueTokens(
-    user: any,
+    user: {
+      id: string;
+      email: string;
+      username: string;
+      isSuperAdmin?: boolean;
+    },
     tenantId: string,
     ipAddress?: string,
     userAgent?: string,
+    tx?: Prisma.TransactionClient,
   ) {
+    const client = tx ?? this.prisma;
     const sessionTimeoutDays = 90;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + sessionTimeoutDays);
 
     const deviceDetails = this.parseUserAgent(userAgent);
 
-    const session = await this.prisma.userSession.create({
+    const session = await client.userSession.create({
       data: {
         userId: user.id,
         tenantId: tenantId,
@@ -615,7 +649,7 @@ export class AuthService {
     const refreshDays = this.parseDurationToDays(refreshTTL);
     refreshExpiresAt.setDate(refreshExpiresAt.getDate() + refreshDays);
 
-    await this.prisma.refreshToken.create({
+    await client.refreshToken.create({
       data: {
         sessionId: session.id,
         userId: user.id,
@@ -627,7 +661,7 @@ export class AuthService {
     });
 
     // Create Audit Log
-    await this.prisma.auditLog.create({
+    await client.auditLog.create({
       data: {
         actorId: user.id,
         action: 'USER_LOGIN',
@@ -642,7 +676,7 @@ export class AuthService {
       },
     });
 
-    const authUser = await this.getAuthUserPayload(user.id);
+    const authUser = await this.getAuthUserPayload(user.id, client);
 
     return {
       tokens,
@@ -764,12 +798,16 @@ export class AuthService {
    * Implements strict reuse/replay protection.
    */
   async refresh(dto: RefreshDto, ipAddress?: string, userAgent?: string) {
-    let payload: any;
+    let payload: { sub: string; sessionId: string; purpose?: string };
     try {
       payload = await this.jwtService.verifyAsync(dto.refreshToken, {
         secret: this.configService.get<string>('jwt.refreshSecret'),
       });
-    } catch (error) {
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (payload.purpose !== 'refresh') {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
@@ -1163,15 +1201,7 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string,
   ) {
-    if (
-      state !== undefined &&
-      expectedState !== undefined &&
-      state !== expectedState
-    ) {
-      throw new UnauthorizedException(
-        'OAuth state mismatch. Possible CSRF attack.',
-      );
-    }
+    this.assertOAuthState(state, expectedState);
 
     let email = '';
     let providerId = '';
@@ -1264,15 +1294,7 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string,
   ) {
-    if (
-      state !== undefined &&
-      expectedState !== undefined &&
-      state !== expectedState
-    ) {
-      throw new UnauthorizedException(
-        'OAuth state mismatch. Possible CSRF attack.',
-      );
-    }
+    this.assertOAuthState(state, expectedState);
 
     let email = '';
     let providerId = '';
@@ -1715,8 +1737,11 @@ export class AuthService {
 
   // --- Helper Methods ---
 
-  private async getAuthUserPayload(userId: string) {
-    const user = await this.prisma.user.findUnique({
+  private async getAuthUserPayload(
+    userId: string,
+    client: Prisma.TransactionClient | PrismaService = this.prisma,
+  ) {
+    const user = await client.user.findUnique({
       where: { id: userId },
       include: {
         roles: {
@@ -1813,13 +1838,31 @@ export class AuthService {
     tenantId: string,
     isSuperAdmin: boolean,
   ) {
-    const payload = {
+    const accessPayload: {
+      sub: string;
+      email: string;
+      username: string;
+      sessionId: string;
+      tenantId: string;
+      isSuperAdmin: boolean;
+      purpose: JwtPurpose;
+    } = {
       sub: userId,
       email,
       username,
       sessionId,
       tenantId,
       isSuperAdmin,
+      purpose: 'access',
+    };
+    const refreshPayload: {
+      sub: string;
+      sessionId: string;
+      purpose: JwtPurpose;
+    } = {
+      sub: userId,
+      sessionId,
+      purpose: 'refresh',
     };
     const accessTokenExpiry =
       await this.runtimeConfig.getString('JWT_EXPIRES_IN');
@@ -1828,17 +1871,14 @@ export class AuthService {
     );
 
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
+      this.jwtService.signAsync(accessPayload, {
         secret: this.configService.get<string>('jwt.secret'),
-        expiresIn: accessTokenExpiry as any,
+        expiresIn: accessTokenExpiry as never,
       }),
-      this.jwtService.signAsync(
-        { sub: userId, sessionId },
-        {
-          secret: this.configService.get<string>('jwt.refreshSecret'),
-          expiresIn: refreshTokenExpiry as any,
-        },
-      ),
+      this.jwtService.signAsync(refreshPayload, {
+        secret: this.configService.get<string>('jwt.refreshSecret'),
+        expiresIn: refreshTokenExpiry as never,
+      }),
     ]);
 
     return { accessToken, refreshToken };

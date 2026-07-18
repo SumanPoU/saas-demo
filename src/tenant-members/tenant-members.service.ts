@@ -53,15 +53,16 @@ export class TenantMembersService {
         );
     }
 
-    // Generate token
+    // Generate token — store only the SHA-256 hash (same pattern as OTP/refresh tokens)
     const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    const invitation = await this.prisma.tenantInvitation.create({
+    await this.prisma.tenantInvitation.create({
       data: {
         tenantId,
         email,
-        tokenHash: token,
+        tokenHash,
         role: dto.roleId ?? 'member',
         invitedById: inviterId,
         expiresAt,
@@ -72,12 +73,16 @@ export class TenantMembersService {
       where: { id: tenantId },
     });
 
-    // In a real app, you would send an email with a link to accept the invitation
-    // e.g., await this.mailService.sendWorkspaceInvitation(email, tenant.name, token);
+    const workspaceName = tenant?.name ?? 'the workspace';
+    await this.mailService.sendWorkspaceInvitation(
+      email,
+      workspaceName,
+      token,
+    );
 
+    // Never return the raw token in the API response — email is the only channel.
     return {
       message: 'Invitation sent successfully',
-      token: invitation.tokenHash,
     };
   }
 
@@ -92,8 +97,12 @@ export class TenantMembersService {
    * @throws BadRequestException if the token is expired
    */
   async acceptInvitation(dto: AcceptInvitationDto) {
+    const incomingHash = crypto
+      .createHash('sha256')
+      .update(dto.token)
+      .digest('hex');
     const invitation = await this.prisma.tenantInvitation.findUnique({
-      where: { tokenHash: dto.token },
+      where: { tokenHash: incomingHash },
       include: { tenant: true },
     });
 
@@ -109,7 +118,6 @@ export class TenantMembersService {
       if (!user) {
         // We could create the user here, or require them to register first.
         // Let's create a placeholder user that requires password change
-        const randomPassword = crypto.randomBytes(12).toString('base64url');
         user = await this.usersService.createUser(
           {
             email: invitation.email,
@@ -117,7 +125,7 @@ export class TenantMembersService {
             lastName: 'User',
             isActive: true,
             roleIds: [],
-          } as any,
+          },
           invitation.invitedById || 'system',
         );
       }

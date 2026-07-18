@@ -3,6 +3,14 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 
+interface AccessTokenPayload {
+  sub: string;
+  sessionId?: string;
+  purpose?: string;
+  type?: string;
+  iat?: number;
+}
+
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   private readonly logger = new Logger(AuthMiddleware.name);
@@ -13,7 +21,15 @@ export class AuthMiddleware implements NestMiddleware {
     private readonly prisma: PrismaService,
   ) {}
 
-  async use(req: any, res: any, next: () => void) {
+  async use(
+    req: {
+      headers?: { authorization?: string };
+      user?: unknown;
+      raw?: { user?: unknown };
+    },
+    _res: unknown,
+    next: () => void,
+  ) {
     const authorization = req.headers?.authorization;
     if (!authorization) {
       return next();
@@ -26,13 +42,31 @@ export class AuthMiddleware implements NestMiddleware {
 
     try {
       // 1. Verify Access Token signature and expiration
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('jwt.secret'),
-      });
+      const payload = await this.jwtService.verifyAsync<AccessTokenPayload>(
+        token,
+        {
+          secret: this.configService.get<string>('jwt.secret'),
+        },
+      );
+
+      // Missing or wrong purpose is treated as invalid (no legacy bypass).
+      if (payload.purpose !== 'access') {
+        this.logger.warn(
+          `Blocked token with purpose=${payload.purpose ?? 'missing'} for sub=${payload.sub}`,
+        );
+        return next();
+      }
 
       if (payload.type === 'mfa_pending') {
         this.logger.warn(
           `Blocked mfa_pending token attempt for sub=${payload.sub}`,
+        );
+        return next();
+      }
+
+      if (!payload.sessionId) {
+        this.logger.warn(
+          `Blocked access token missing sessionId for sub=${payload.sub}`,
         );
         return next();
       }
@@ -65,6 +99,7 @@ export class AuthMiddleware implements NestMiddleware {
 
       if (
         user.passwordChangedAt &&
+        payload.iat !== undefined &&
         payload.iat * 1000 < user.passwordChangedAt.getTime()
       ) {
         this.logger.debug(

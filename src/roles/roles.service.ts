@@ -3,15 +3,27 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoleDto, UpdateRoleDto } from './dto';
+
+/** Authenticated user context used for tenant-scoped role operations. */
+export interface RolesRequestUser {
+  id: string;
+  tenantId?: string | null;
+  isSuperAdmin?: boolean;
+}
+
+type RolePermissionWithPermission = {
+  permission?: { id: string; name: string } | null;
+};
 
 @Injectable()
 export class RolesService {
   constructor(private prisma: PrismaService) {}
 
   private withPermissionsFromRolePermissions<
-    T extends { rolePermissions?: any[] },
+    T extends { rolePermissions?: RolePermissionWithPermission[] },
   >(role: T) {
     return {
       ...role,
@@ -20,6 +32,21 @@ export class RolesService {
           ?.map((rolePermission) => rolePermission.permission)
           .filter(Boolean) ?? [],
     };
+  }
+
+  /**
+   * Build a tenant-scoped role lookup. Non–super-admins always filter by
+   * tenantId so cross-tenant IDs resolve as NotFound (no existence leak).
+   */
+  private buildTenantScopedRoleWhere(
+    id: string,
+    reqUser?: RolesRequestUser,
+  ): Prisma.RoleWhereInput {
+    const where: Prisma.RoleWhereInput = { id };
+    if (reqUser && !reqUser.isSuperAdmin) {
+      where.tenantId = reqUser.tenantId ?? undefined;
+    }
+    return where;
   }
 
   /**
@@ -32,10 +59,7 @@ export class RolesService {
     isDefault: boolean | undefined,
     excludeId?: string,
     tenantId?: string,
-    tx?: Omit<
-      PrismaService,
-      '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
-    >,
+    tx?: Prisma.TransactionClient,
   ): Promise<void> {
     if (!isDefault) return;
 
@@ -62,12 +86,13 @@ export class RolesService {
    * Validates name uniqueness, enforces the single-default constraint if
    * isDefault is true, and persists the new role with its permissions.
    */
-  async createRole(dto: CreateRoleDto, reqUser: any) {
+  async createRole(dto: CreateRoleDto, reqUser: RolesRequestUser) {
     const tenantId = reqUser.isSuperAdmin
-      ? (dto as any).tenantId || reqUser.tenantId
+      ? (dto as CreateRoleDto & { tenantId?: string }).tenantId ||
+        reqUser.tenantId
       : reqUser.tenantId;
     const existingRole = await this.prisma.role.findFirst({
-      where: { name: dto.name, tenantId },
+      where: { name: dto.name, tenantId: tenantId ?? undefined },
     });
 
     if (existingRole) {
@@ -77,8 +102,7 @@ export class RolesService {
     await this.ensureSingleDefault(
       dto.isDefault,
       undefined,
-      undefined,
-      tenantId,
+      tenantId ?? undefined,
     );
 
     const role = await this.prisma.role.create({
@@ -86,7 +110,7 @@ export class RolesService {
         name: dto.name,
         description: dto.description,
         isDefault: dto.isDefault ?? false,
-        tenantId,
+        tenantId: tenantId ?? undefined,
       },
       include: {
         rolePermissions: {
@@ -103,7 +127,7 @@ export class RolesService {
    * Returns every role ordered by creation date, including their permissions
    * and the users currently assigned to each role.
    */
-  async getAllRoles(reqUser?: any) {
+  async getAllRoles(reqUser?: RolesRequestUser) {
     const where = reqUser?.isSuperAdmin ? {} : { tenantId: reqUser?.tenantId };
 
     const roles = await this.prisma.role.findMany({
@@ -125,16 +149,11 @@ export class RolesService {
   /**
    * Get Role By ID
    * Fetches a single role with full permission and user details.
-   * Throws NotFoundException if the role does not exist.
+   * Throws NotFoundException if the role does not exist under this tenant.
    */
-  async getRoleById(id: string, reqUser?: any) {
-    const where: any = { id };
-    if (reqUser && !reqUser.isSuperAdmin) {
-      where.tenantId = reqUser.tenantId;
-    }
-
+  async getRoleById(id: string, reqUser?: RolesRequestUser) {
     const role = await this.prisma.role.findFirst({
-      where,
+      where: this.buildTenantScopedRoleWhere(id, reqUser),
       include: {
         rolePermissions: {
           include: {
@@ -161,7 +180,7 @@ export class RolesService {
    * constraint when promoting to default (excluding itself), and applies
    * the partial update to name, description, or isDefault.
    */
-  async updateRole(id: string, dto: UpdateRoleDto, reqUser?: any) {
+  async updateRole(id: string, dto: UpdateRoleDto, reqUser: RolesRequestUser) {
     const role = await this.getRoleById(id, reqUser);
 
     if (dto.name && dto.name !== role.name) {
@@ -205,8 +224,8 @@ export class RolesService {
    * Blocks deletion if the role is currently assigned to any users.
    * Permanently removes the role and all associated permission links.
    */
-  async deleteRole(id: string) {
-    const role = await this.getRoleById(id);
+  async deleteRole(id: string, reqUser: RolesRequestUser) {
+    const role = await this.getRoleById(id, reqUser);
 
     const usersWithRole = await this.prisma.user.count({
       where: {
@@ -235,12 +254,20 @@ export class RolesService {
   async assignPermissionsToRole(
     roleId: string,
     permissionIds: string[],
+    reqUser: RolesRequestUser,
     assignedById?: string,
   ) {
-    const role = await this.getRoleById(roleId);
+    const role = await this.getRoleById(roleId, reqUser);
+
+    const permissionWhere: Prisma.PermissionWhereInput = {
+      id: { in: permissionIds },
+    };
+    if (!reqUser.isSuperAdmin) {
+      permissionWhere.tenantId = reqUser.tenantId ?? undefined;
+    }
 
     const permissions = await this.prisma.permission.findMany({
-      where: { id: { in: permissionIds } },
+      where: permissionWhere,
     });
 
     if (permissions.length !== permissionIds.length) {
@@ -285,8 +312,12 @@ export class RolesService {
    * Bulk-deletes the specified RolePermission records from the role.
    * Silently skips IDs that were never assigned.
    */
-  async removePermissionsFromRole(roleId: string, permissionIds: string[]) {
-    const role = await this.getRoleById(roleId);
+  async removePermissionsFromRole(
+    roleId: string,
+    permissionIds: string[],
+    reqUser: RolesRequestUser,
+  ) {
+    const role = await this.getRoleById(roleId, reqUser);
 
     await this.prisma.rolePermission.deleteMany({
       where: {
@@ -307,8 +338,12 @@ export class RolesService {
    * Validates all user IDs exist, then connects the role to each user.
    * Already-assigned users are unaffected (Prisma connect is idempotent).
    */
-  async assignRoleToUsers(roleId: string, userIds: string[]) {
-    const role = await this.getRoleById(roleId);
+  async assignRoleToUsers(
+    roleId: string,
+    userIds: string[],
+    reqUser: RolesRequestUser,
+  ) {
+    const role = await this.getRoleById(roleId, reqUser);
 
     const users = await this.prisma.user.findMany({
       where: { id: { in: userIds } },
@@ -345,8 +380,12 @@ export class RolesService {
    * Disconnects the role from each specified user.
    * Users who do not have the role are silently skipped.
    */
-  async removeRoleFromUsers(roleId: string, userIds: string[]) {
-    const role = await this.getRoleById(roleId);
+  async removeRoleFromUsers(
+    roleId: string,
+    userIds: string[],
+    reqUser: RolesRequestUser,
+  ) {
+    const role = await this.getRoleById(roleId, reqUser);
 
     const updatedUsers = await Promise.all(
       userIds.map((userId) =>
@@ -375,14 +414,14 @@ export class RolesService {
    * Returns all roles assigned to a user, each populated with their
    * permissions. Throws NotFoundException if the user does not exist.
    */
-  async getUserRoles(userId: string, reqUser?: any) {
+  async getUserRoles(userId: string, reqUser?: RolesRequestUser) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
         roles: reqUser?.isSuperAdmin
           ? { include: { rolePermissions: { include: { permission: true } } } }
           : {
-              where: { tenantId: reqUser?.tenantId },
+              where: { tenantId: reqUser?.tenantId ?? undefined },
               include: {
                 rolePermissions: { include: { permission: true } },
               },

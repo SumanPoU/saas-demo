@@ -74,8 +74,7 @@ export class MediaController {
     @Param('tenantId') tenantId: string,
     @Param('fileId') fileId: string,
   ) {
-    // In a real app, you'd check if the file belongs to the tenantId
-    const url = await this.mediaService.getDownloadUrl(fileId, 3600);
+    const url = await this.mediaService.getDownloadUrl(fileId, tenantId, 3600);
     return { url, expires_in: 3600 };
   }
 }

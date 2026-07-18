@@ -2,9 +2,12 @@ import { AuthMiddleware } from './auth.middleware';
 
 describe('AuthMiddleware', () => {
   let middleware: AuthMiddleware;
-  let jwtService: any;
-  let configService: any;
-  let prisma: any;
+  let jwtService: { verifyAsync: jest.Mock };
+  let configService: { get: jest.Mock };
+  let prisma: {
+    userSession: { findUnique: jest.Mock };
+    user: { findUnique: jest.Mock };
+  };
 
   beforeEach(() => {
     jwtService = {
@@ -22,11 +25,15 @@ describe('AuthMiddleware', () => {
       },
     };
 
-    middleware = new AuthMiddleware(jwtService, configService, prisma);
+    middleware = new AuthMiddleware(jwtService, configService, prisma as never);
   });
 
   it('attaches user, roles, permissions, session, tenant, and mustChangePassword to the request', async () => {
-    const req: any = {
+    const req: {
+      headers: { authorization: string };
+      raw: Record<string, unknown>;
+      user?: unknown;
+    } = {
       headers: { authorization: 'Bearer access-token' },
       raw: {},
     };
@@ -35,11 +42,12 @@ describe('AuthMiddleware', () => {
     jwtService.verifyAsync.mockResolvedValue({
       sub: 'user-1',
       sessionId: 'session-1',
+      purpose: 'access',
       iat: Math.floor(Date.now() / 1000),
     });
     prisma.userSession.findUnique.mockResolvedValue({
       id: 'session-1',
-
+      tenantId: 'tenant-1',
       isRevoked: false,
       expiresAt: new Date(Date.now() + 60_000),
     });
@@ -73,13 +81,14 @@ describe('AuthMiddleware', () => {
       roles: ['Admin'],
       permissions: ['users:read', 'users:create'],
       sessionId: 'session-1',
+      tenantId: 'tenant-1',
     });
     expect(req.raw.user).toBe(req.user);
     expect(next).toHaveBeenCalledTimes(1);
   });
 
   it('does not attach a user for MFA-pending tokens', async () => {
-    const req: any = {
+    const req: { headers: { authorization: string }; user?: unknown } = {
       headers: { authorization: 'Bearer mfa-token' },
     };
     const next = jest.fn();
@@ -87,6 +96,44 @@ describe('AuthMiddleware', () => {
     jwtService.verifyAsync.mockResolvedValue({
       sub: 'user-1',
       type: 'mfa_pending',
+      purpose: 'access',
+    });
+
+    await middleware.use(req, {}, next);
+
+    expect(req.user).toBeUndefined();
+    expect(prisma.userSession.findUnique).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects tokens missing the purpose claim', async () => {
+    const req: { headers: { authorization: string }; user?: unknown } = {
+      headers: { authorization: 'Bearer legacy-token' },
+    };
+    const next = jest.fn();
+
+    jwtService.verifyAsync.mockResolvedValue({
+      sub: 'user-1',
+      sessionId: 'session-1',
+    });
+
+    await middleware.use(req, {}, next);
+
+    expect(req.user).toBeUndefined();
+    expect(prisma.userSession.findUnique).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects tokens with the wrong purpose for access routes', async () => {
+    const req: { headers: { authorization: string }; user?: unknown } = {
+      headers: { authorization: 'Bearer refresh-as-access' },
+    };
+    const next = jest.fn();
+
+    jwtService.verifyAsync.mockResolvedValue({
+      sub: 'user-1',
+      sessionId: 'session-1',
+      purpose: 'refresh',
     });
 
     await middleware.use(req, {}, next);

@@ -3,6 +3,7 @@ import {
   Logger,
   OnModuleInit,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -58,14 +59,12 @@ export class MediaService implements OnModuleInit {
       if (!exists) {
         await this.minioClient.makeBucket(this.bucketName, 'us-east-1');
         this.logger.log(`Created MinIO bucket: ${this.bucketName}`);
-
-        // Make bucket public if we want objects to be readable without presigned URLs
-        // Note: For a secure SaaS, we usually use presigned URLs or a proxy, but we'll set it private
       }
     } catch (err) {
+      const error = err as Error;
       this.logger.error(
-        `MinIO initialization failed: ${err.message}`,
-        err.stack,
+        `MinIO initialization failed: ${error.message}`,
+        error.stack,
       );
     }
   }
@@ -85,7 +84,6 @@ export class MediaService implements OnModuleInit {
       isPublic,
     } = options;
 
-    // Construct storage path
     const fileId = crypto.randomUUID();
     const ext = path.extname(originalName);
     const safePurpose = (purpose || 'misc').toLowerCase();
@@ -98,7 +96,6 @@ export class MediaService implements OnModuleInit {
     }
 
     try {
-      // Upload to MinIO
       await this.minioClient.putObject(
         this.bucketName,
         storagePath,
@@ -107,7 +104,6 @@ export class MediaService implements OnModuleInit {
         { 'Content-Type': mimeType },
       );
 
-      // Track in database
       const mediaFile = await this.prisma.mediaFile.create({
         data: {
           id: fileId,
@@ -125,24 +121,29 @@ export class MediaService implements OnModuleInit {
 
       return mediaFile;
     } catch (error) {
+      const err = error as Error;
       this.logger.error(
-        `Failed to upload file ${originalName}: ${error.message}`,
-        error.stack,
+        `Failed to upload file ${originalName}: ${err.message}`,
+        err.stack,
       );
       throw new InternalServerErrorException('Failed to upload file');
     }
   }
 
   /**
-   * Get a presigned URL for downloading a private file
+   * Get a presigned URL for downloading a private file belonging to the tenant.
    */
-  async getDownloadUrl(mediaFileId: string, expiresInSecs = 3600) {
-    const mediaFile = await this.prisma.mediaFile.findUnique({
-      where: { id: mediaFileId },
+  async getDownloadUrl(
+    fileId: string,
+    tenantId: string,
+    expiresInSecs = 3600,
+  ): Promise<string> {
+    const mediaFile = await this.prisma.mediaFile.findFirst({
+      where: { id: fileId, tenantId },
     });
 
     if (!mediaFile || mediaFile.deletedAt) {
-      throw new InternalServerErrorException('File not found');
+      throw new NotFoundException('File not found');
     }
 
     return this.minioClient.presignedGetObject(
@@ -173,8 +174,9 @@ export class MediaService implements OnModuleInit {
         data: { deletedAt: new Date() },
       });
     } catch (error) {
+      const err = error as Error;
       this.logger.error(
-        `Failed to delete file ${mediaFile.storagePath}: ${error.message}`,
+        `Failed to delete file ${mediaFile.storagePath}: ${err.message}`,
       );
       throw new InternalServerErrorException('Failed to delete file');
     }

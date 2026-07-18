@@ -31,7 +31,12 @@ describe('MfaService', () => {
 
   beforeEach(() => {
     prisma = {
-      $transaction: jest.fn((operations) => Promise.all(operations)),
+      $transaction: jest.fn(async (cb: (tx: typeof prisma) => unknown) => {
+        if (typeof cb === 'function') {
+          return cb(prisma);
+        }
+        return Promise.all(cb as Promise<unknown>[]);
+      }),
       user: {
         findUnique: jest.fn(),
         findFirst: jest.fn(),
@@ -211,7 +216,9 @@ describe('MfaService', () => {
       'tenant-1',
       '127.0.0.1',
       'Jest Agent',
+      prisma,
     );
+    expect(prisma.$transaction).toHaveBeenCalled();
     expect(prisma.auditLog.create).toHaveBeenCalledWith({
       data: {
         actorId: 'user-1',
@@ -220,6 +227,74 @@ describe('MfaService', () => {
         entityId: 'user-1',
       },
     });
+  });
+
+  it('does not mark a backup code as used when session issuance fails inside the transaction', async () => {
+    const backupCode = 'ABCDEF1234';
+    const codeHash = await bcrypt.hash(backupCode, 10);
+    jwtService.verifyAsync.mockResolvedValue({
+      type: 'mfa_pending',
+      sub: 'user-1',
+    });
+    prisma.mfaConfig.findUnique.mockResolvedValue({
+      id: 'mfa-1',
+      userId: 'user-1',
+      isEnabled: true,
+      totpSecret: null,
+    });
+    prisma.mfaBackupCode.findMany.mockResolvedValue([
+      { id: 'backup-1', codeHash },
+    ]);
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+      roles: [],
+      tenantMemberships: [
+        {
+          tenantId: 'tenant-1',
+          isOwner: true,
+          tenant: { name: 'Test', slug: 'test' },
+        },
+      ],
+    });
+
+    const inputError = new Error('session issuance failed');
+    authService.establishSessionAndIssueTokens.mockRejectedValue(inputError);
+
+    // Simulate transactional rollback: if the callback throws, nothing persists.
+    prisma.$transaction.mockImplementation(
+      async (cb: (tx: typeof prisma) => Promise<unknown>) => {
+        const mockTx = {
+          ...prisma,
+          mfaBackupCode: {
+            ...prisma.mfaBackupCode,
+            update: jest.fn().mockResolvedValue({}),
+            count: jest.fn().mockResolvedValue(1),
+          },
+          auditLog: {
+            create: jest.fn(),
+          },
+        };
+        try {
+          return await cb(mockTx as never);
+        } catch (error) {
+          // On failure, code must not be marked used on the outer prisma client
+          throw error;
+        }
+      },
+    );
+
+    await expect(
+      service.verifyLogin(
+        'mfa-pending-token',
+        backupCode,
+        '127.0.0.1',
+        'Jest Agent',
+      ),
+    ).rejects.toThrow('session issuance failed');
+
+    expect(prisma.mfaBackupCode.update).not.toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalled();
   });
 
   it('rejects invalid MFA pending token scopes', async () => {

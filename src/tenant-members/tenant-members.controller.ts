@@ -69,7 +69,7 @@ export class TenantMembersController {
     return this.membersService.inviteMember(
       tenantId,
       dto,
-      user.userId || (user as any).id,
+      user.userId || user.id,
     );
   }
 
@@ -183,7 +183,7 @@ export class TenantMembersController {
     return this.membersService.removeMember(
       tenantId,
       userId,
-      user.userId || (user as any).id,
+      user.userId || user.id,
     );
   }
 }

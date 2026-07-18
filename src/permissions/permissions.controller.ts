@@ -244,8 +244,9 @@ export class PermissionsController {
   async updatePermissionGroup(
     @Param('id') id: string,
     @Body() dto: UpdatePermissionGroupDto,
+    @CurrentUser() user: any,
   ) {
-    return this.permissionsService.updatePermissionGroup(id, dto);
+    return this.permissionsService.updatePermissionGroup(id, dto, user);
   }
 
   @Delete('groups/:id')
@@ -260,8 +261,11 @@ export class PermissionsController {
   })
   @ApiResponse({ status: 404, description: 'Permission group not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async deletePermissionGroup(@Param('id') id: string) {
-    await this.permissionsService.deletePermissionGroup(id);
+  async deletePermissionGroup(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    await this.permissionsService.deletePermissionGroup(id, user);
   }
 
   @Get(':id')
@@ -318,8 +322,9 @@ export class PermissionsController {
   async updatePermission(
     @Param('id') id: string,
     @Body() dto: UpdatePermissionDto,
+    @CurrentUser() user: any,
   ) {
-    return this.permissionsService.updatePermission(id, dto);
+    return this.permissionsService.updatePermission(id, dto, user);
   }
 
   @Delete(':id')
@@ -337,8 +342,8 @@ export class PermissionsController {
   })
   @ApiResponse({ status: 404, description: 'Permission not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async deletePermission(@Param('id') id: string) {
-    await this.permissionsService.deletePermission(id);
+  async deletePermission(@Param('id') id: string, @CurrentUser() user: any) {
+    await this.permissionsService.deletePermission(id, user);
   }
 
   @Post(':id/groups')
@@ -367,10 +372,12 @@ export class PermissionsController {
   async assignPermissionToGroup(
     @Param('id') permissionId: string,
     @Body() dto: AssignGroupsDto,
+    @CurrentUser() user: any,
   ) {
     return this.permissionsService.assignPermissionToGroup(
       permissionId,
       dto.groupIds,
+      user,
     );
   }
 
@@ -389,10 +396,12 @@ export class PermissionsController {
   async removePermissionFromGroup(
     @Param('id') permissionId: string,
     @Body() dto: AssignGroupsDto,
+    @CurrentUser() user: any,
   ) {
     await this.permissionsService.removePermissionFromGroup(
       permissionId,
       dto.groupIds,
+      user,
     );
   }
 }

@@ -3,13 +3,33 @@ import { PermissionsService } from './permissions.service';
 
 describe('PermissionsService', () => {
   let service: PermissionsService;
-  let prisma: any;
-  let pagination: any;
+  let prisma: {
+    permission: {
+      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+    };
+    permissionGroup: {
+      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      findMany: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+    };
+    rolePermission: {
+      count: jest.Mock;
+    };
+  };
+  let pagination: { paginate: jest.Mock };
 
   const permission = {
     id: 'permission-1',
     name: 'users:read',
     description: 'Read users',
+    tenantId: 'tenant-a',
     groups: [],
     rolePermissions: [{ role: { id: 'role-1', name: 'Admin' } }],
   };
@@ -39,7 +59,7 @@ describe('PermissionsService', () => {
       paginate: jest.fn(),
     };
 
-    service = new PermissionsService(prisma, pagination);
+    service = new PermissionsService(prisma as never, pagination as never);
   });
 
   it('creates a permission and flattens roles from rolePermissions', async () => {
@@ -48,7 +68,7 @@ describe('PermissionsService', () => {
 
     const result = await service.createPermission(
       { name: 'users:read', description: 'Read users' },
-      { id: 'admin-1' },
+      { id: 'admin-1', tenantId: 'tenant-a', isSuperAdmin: false },
     );
 
     expect(result).toMatchObject({
@@ -60,6 +80,7 @@ describe('PermissionsService', () => {
         name: 'users:read',
         description: 'Read users',
         createdBy: 'admin-1',
+        tenantId: 'tenant-a',
       },
       include: expect.any(Object),
     });
@@ -80,9 +101,33 @@ describe('PermissionsService', () => {
     prisma.rolePermission.count.mockResolvedValue(2);
 
     await expect(
-      service.deletePermission('permission-1'),
+      service.deletePermission('permission-1', {
+        id: 'admin-1',
+        tenantId: 'tenant-a',
+        isSuperAdmin: false,
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
+    expect(prisma.permission.delete).not.toHaveBeenCalled();
+  });
+
+  it('rejects mutating a permission that belongs to another tenant', async () => {
+    const inputTenantAUser = {
+      id: 'admin-a',
+      tenantId: 'tenant-a',
+      isSuperAdmin: false,
+    };
+    prisma.permission.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.deletePermission('permission-tenant-b', inputTenantAUser),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.permission.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'permission-tenant-b', tenantId: 'tenant-a' },
+      }),
+    );
     expect(prisma.permission.delete).not.toHaveBeenCalled();
   });
 
@@ -91,7 +136,11 @@ describe('PermissionsService', () => {
     prisma.permissionGroup.findMany.mockResolvedValue([{ id: 'group-1' }]);
 
     await expect(
-      service.assignPermissionToGroup('permission-1', ['group-1', 'missing']),
+      service.assignPermissionToGroup('permission-1', ['group-1', 'missing'], {
+        id: 'admin-1',
+        tenantId: 'tenant-a',
+        isSuperAdmin: true,
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.permission.update).not.toHaveBeenCalled();
@@ -105,10 +154,11 @@ describe('PermissionsService', () => {
       groups: [{ id: 'group-1' }, { id: 'group-2' }],
     });
 
-    await service.assignPermissionToGroup('permission-1', [
-      'group-1',
-      'group-2',
-    ]);
+    await service.assignPermissionToGroup(
+      'permission-1',
+      ['group-1', 'group-2'],
+      { id: 'admin-1', tenantId: 'tenant-a', isSuperAdmin: true },
+    );
 
     expect(prisma.permission.update).toHaveBeenCalledWith({
       where: { id: 'permission-1' },
@@ -122,7 +172,7 @@ describe('PermissionsService', () => {
   });
 
   it('throws NotFoundException for missing permission groups', async () => {
-    prisma.permissionGroup.findUnique.mockResolvedValue(null);
+    prisma.permissionGroup.findFirst.mockResolvedValue(null);
 
     await expect(
       service.getPermissionGroupById('missing-group'),

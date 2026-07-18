@@ -270,12 +270,12 @@ export class MfaService {
     ipAddress?: string,
     userAgent?: string,
   ) {
-    let payload: any;
+    let payload: { sub: string; type?: string };
     try {
       payload = await this.jwtService.verifyAsync(mfaPendingToken, {
         secret: this.config.get<string>('jwt.secret'),
       });
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid or expired MFA pending token.');
     }
 
@@ -294,7 +294,6 @@ export class MfaService {
 
     const cleanedCode = code.trim().toUpperCase();
     const isTotp = /^\d{6}$/.test(cleanedCode);
-    let warning: string | undefined;
 
     if (isTotp) {
       // TOTP path
@@ -314,56 +313,77 @@ export class MfaService {
         throw new UnauthorizedException('Invalid TOTP code');
       }
       this.markTotpCodeUsed(userId, cleanedCode);
-    } else {
-      // Backup code path (8 chars)
-      if (cleanedCode.length !== 10) {
-        throw new UnauthorizedException('Invalid verification code length.');
-      }
 
-      const activeBackupCodes = await this.prisma.mfaBackupCode.findMany({
-        where: {
-          mfaConfigId: mfaConfig.id,
-          isUsed: false,
-        },
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { roles: true, tenantMemberships: true },
       });
 
-      let matchedCodeId: string | null = null;
-      for (const bc of activeBackupCodes) {
-        const isMatch = await bcrypt.compare(cleanedCode, bc.codeHash);
-        if (isMatch) {
-          matchedCodeId = bc.id;
-          break;
-        }
+      if (!user) {
+        throw new UnauthorizedException('User account not found');
       }
 
-      if (!matchedCodeId) {
-        throw new UnauthorizedException('Invalid backup code');
+      const defaultMembership =
+        user.tenantMemberships?.find((m) => m.isOwner) ||
+        user.tenantMemberships?.[0];
+      if (!defaultMembership) {
+        throw new UnauthorizedException(
+          'User does not belong to any workspace. Contact support.',
+        );
       }
 
-      // Mark matched backup code as used
-      await this.prisma.mfaBackupCode.update({
-        where: { id: matchedCodeId },
+      const loginResult = await this.authService.establishSessionAndIssueTokens(
+        user,
+        defaultMembership.tenantId,
+        ipAddress,
+        userAgent,
+      );
+
+      await this.prisma.auditLog.create({
         data: {
-          isUsed: true,
-          usedAt: new Date(),
+          actorId: userId,
+          action: 'mfa_verified',
+          entityType: 'user',
+          entityId: userId,
         },
       });
 
-      // Count remaining backup codes
-      const remainingUnused = await this.prisma.mfaBackupCode.count({
-        where: {
-          mfaConfigId: mfaConfig.id,
-          isUsed: false,
+      return {
+        success: true,
+        message: 'MFA successfully authenticated.',
+        data: {
+          accessToken: loginResult.tokens.accessToken,
+          refreshToken: loginResult.tokens.refreshToken,
+          warning: undefined as string | undefined,
         },
-      });
+      };
+    }
 
-      if (remainingUnused === 0) {
-        warning =
-          'You have used your last backup code. Please regenerate backup codes immediately.';
+    // Backup code path (8 chars / 10 alphanumeric)
+    if (cleanedCode.length !== 10) {
+      throw new UnauthorizedException('Invalid verification code length.');
+    }
+
+    const activeBackupCodes = await this.prisma.mfaBackupCode.findMany({
+      where: {
+        mfaConfigId: mfaConfig.id,
+        isUsed: false,
+      },
+    });
+
+    let matchedCodeId: string | null = null;
+    for (const bc of activeBackupCodes) {
+      const isMatch = await bcrypt.compare(cleanedCode, bc.codeHash);
+      if (isMatch) {
+        matchedCodeId = bc.id;
+        break;
       }
     }
 
-    // Retrieve user and establish the login session (delegating to AuthService)
+    if (!matchedCodeId) {
+      throw new UnauthorizedException('Invalid backup code');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { roles: true, tenantMemberships: true },
@@ -374,31 +394,60 @@ export class MfaService {
     }
 
     const defaultMembership =
-      user.tenantMemberships?.find((m: any) => m.isOwner) ||
+      user.tenantMemberships?.find((m) => m.isOwner) ||
       user.tenantMemberships?.[0];
     if (!defaultMembership) {
       throw new UnauthorizedException(
         'User does not belong to any workspace. Contact support.',
       );
     }
-    const tenantId = defaultMembership.tenantId;
 
-    const loginResult = await this.authService.establishSessionAndIssueTokens(
-      user,
-      tenantId,
-      ipAddress,
-      userAgent,
-    );
+    // Mark backup code used + issue session atomically so a failure
+    // never leaves a consumed code without a session (or vice versa).
+    const { loginResult, warning } = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.mfaBackupCode.update({
+          where: { id: matchedCodeId },
+          data: {
+            isUsed: true,
+            usedAt: new Date(),
+          },
+        });
 
-    // Audit log
-    await this.prisma.auditLog.create({
-      data: {
-        actorId: userId,
-        action: 'mfa_verified',
-        entityType: 'user',
-        entityId: userId,
+        const remainingUnused = await tx.mfaBackupCode.count({
+          where: {
+            mfaConfigId: mfaConfig.id,
+            isUsed: false,
+          },
+        });
+
+        const sessionResult =
+          await this.authService.establishSessionAndIssueTokens(
+            user,
+            defaultMembership.tenantId,
+            ipAddress,
+            userAgent,
+            tx,
+          );
+
+        await tx.auditLog.create({
+          data: {
+            actorId: userId,
+            action: 'mfa_verified',
+            entityType: 'user',
+            entityId: userId,
+          },
+        });
+
+        return {
+          loginResult: sessionResult,
+          warning:
+            remainingUnused === 0
+              ? 'You have used your last backup code. Please regenerate backup codes immediately.'
+              : undefined,
+        };
       },
-    });
+    );
 
     return {
       success: true,

@@ -58,4 +58,24 @@ describe('MailService', () => {
       expect.stringContaining('123456'),
     );
   });
+
+  it('sends workspace invitation email through the common sendEmail helper', async () => {
+    const sendEmail = jest
+      .spyOn(service, 'sendEmail')
+      .mockResolvedValue(undefined);
+    const inputToken = 'a'.repeat(64);
+
+    await service.sendWorkspaceInvitation(
+      'invitee@example.com',
+      'Acme Workspace',
+      inputToken,
+    );
+
+    expect(sendEmail).toHaveBeenCalledWith(
+      'invitee@example.com',
+      "You're invited to join Acme Workspace",
+      expect.stringContaining(inputToken),
+      expect.stringContaining(inputToken),
+    );
+  });
 });

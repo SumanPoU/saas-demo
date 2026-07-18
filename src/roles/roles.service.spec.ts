@@ -67,19 +67,20 @@ describe('RolesService', () => {
         name: 'Admin',
         description: 'Admin role',
         isDefault: true,
-        tenantId: null,
+        tenantId: undefined,
       },
       include: expect.any(Object),
     });
   });
 
   it('enforces only one default role', async () => {
-    prisma.role.findFirst.mockResolvedValue(null);
-    prisma.role.findFirst.mockResolvedValue({
-      id: 'role-default',
-      name: 'User',
-      isDefault: true,
-    });
+    prisma.role.findFirst
+      .mockResolvedValueOnce(null) // uniqueness check
+      .mockResolvedValueOnce({
+        id: 'role-default',
+        name: 'User',
+        isDefault: true,
+      }); // ensureSingleDefault
 
     await expect(
       service.createRole(
@@ -95,10 +96,34 @@ describe('RolesService', () => {
     prisma.role.findFirst.mockResolvedValue(role);
     prisma.user.count.mockResolvedValue(3);
 
-    await expect(service.deleteRole('role-1')).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.deleteRole('role-1', {
+        id: 'admin-1',
+        tenantId: 'tenant-a',
+        isSuperAdmin: false,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
 
+    expect(prisma.role.delete).not.toHaveBeenCalled();
+  });
+
+  it('rejects deleting a role that belongs to another tenant', async () => {
+    const inputTenantAUser = {
+      id: 'admin-a',
+      tenantId: 'tenant-a',
+      isSuperAdmin: false,
+    };
+    prisma.role.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.deleteRole('role-tenant-b', inputTenantAUser),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.role.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'role-tenant-b', tenantId: 'tenant-a' },
+      }),
+    );
     expect(prisma.role.delete).not.toHaveBeenCalled();
   });
 
@@ -119,6 +144,7 @@ describe('RolesService', () => {
     const result = await service.assignPermissionsToRole(
       'role-1',
       ['permission-1', 'permission-2'],
+      { id: 'admin-1', tenantId: 'tenant-a', isSuperAdmin: true },
       'admin-1',
     );
 
@@ -154,6 +180,7 @@ describe('RolesService', () => {
       service.assignPermissionsToRole(
         'role-1',
         ['permission-1', 'missing'],
+        { id: 'admin-1', tenantId: 'tenant-a', isSuperAdmin: true },
         'admin-1',
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -175,5 +202,31 @@ describe('RolesService', () => {
     await expect(
       service.getRoleById('missing-role', { id: 'admin-1' }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('passes tenantId as the third argument to ensureSingleDefault on create', async () => {
+    prisma.role.findFirst.mockResolvedValue(null);
+    prisma.role.create.mockResolvedValue({
+      ...role,
+      tenantId: 'tenant-a',
+      isDefault: true,
+      rolePermissions: [],
+    });
+
+    await service.createRole(
+      { name: 'Default', isDefault: true },
+      { id: 'admin-1', tenantId: 'tenant-a', isSuperAdmin: false },
+    );
+
+    // First findFirst: uniqueness check; second: ensureSingleDefault with tenantId
+    expect(prisma.role.findFirst).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          isDefault: true,
+          tenantId: 'tenant-a',
+        }),
+      }),
+    );
   });
 });

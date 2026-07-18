@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class OAuthDto {
   @ApiProperty({
@@ -11,20 +11,20 @@ export class OAuthDto {
   @IsNotEmpty()
   code: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'xyz123',
     description: 'The state parameter returned by the OAuth provider',
   })
-  @IsOptional()
   @IsString()
-  state?: string;
+  @IsNotEmpty()
+  state: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'xyz123',
     description:
       'The expected state parameter stored by the client to verify against CSRF',
   })
-  @IsOptional()
   @IsString()
-  expectedState?: string;
+  @IsNotEmpty()
+  expectedState: string;
 }
