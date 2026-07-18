@@ -7,7 +7,6 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
 import {
   ApiBody,
   ApiBearerAuth,
@@ -16,7 +15,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { AUTH_SENSITIVE_THROTTLE } from './auth-throttle.constants';
+import { AuthThrottle } from './decorators/auth-throttle.decorator';
 import {
   InitiateRegisterDto,
   VerifyRegisterOtpDto,
@@ -41,7 +40,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('register/initiate')
   @HttpCode(HttpStatus.CREATED)
   @ResponseMessage(
@@ -73,7 +72,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('register/resend-otp')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('New verification OTP sent successfully')
@@ -97,7 +96,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('register/verify-otp')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('OTP successfully verified')
@@ -122,7 +121,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('register/complete')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Registration complete. You can now login.')
@@ -155,7 +154,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Login successful')
@@ -224,7 +223,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('set-required-password')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Password set successfully. Please login again.')
@@ -309,7 +308,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Tokens successfully refreshed')
@@ -367,7 +366,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Password recovery request initiated')
@@ -396,7 +395,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('reset-password/verify')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Password recovery OTP verified successfully')
@@ -421,7 +420,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('reset-password/complete')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Password reset successfully')
@@ -458,7 +457,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('oauth/google')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Google login successful')
@@ -505,7 +504,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle(AUTH_SENSITIVE_THROTTLE)
+  @AuthThrottle()
   @Post('oauth/github')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('GitHub login successful')

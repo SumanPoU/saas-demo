@@ -150,7 +150,9 @@ export class PermissionsService {
     return {
       ...result,
       data: result.data.map((permission) =>
-        this.withRolesFromRolePermissions(permission),
+        this.withRolesFromRolePermissions(
+          permission as { rolePermissions?: RolePermissionWithRole[] },
+        ),
       ),
     };
   }

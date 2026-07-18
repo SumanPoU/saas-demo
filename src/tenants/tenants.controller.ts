@@ -70,7 +70,11 @@ export class TenantsController {
   })
   findAll(
     @CurrentUser()
-    user: { id?: string; userId?: string; isSuperAdmin?: boolean },
+    user: {
+      id?: string;
+      userId?: string;
+      isSuperAdmin?: boolean;
+    },
   ) {
     return this.tenantsService.findAll(
       user.userId || user.id!,

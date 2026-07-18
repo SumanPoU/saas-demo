@@ -6,7 +6,7 @@ import {
   ThrottlerGuard,
   ThrottlerModuleOptions,
 } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppLoggerModule } from './logger/logger.module';
@@ -19,6 +19,7 @@ import { RolesModule } from './roles/roles.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { AuthGuard } from './auth/guards/auth.guard';
 import { AuthMiddleware } from './auth/middlewares/auth.middleware';
+import { AUTH_THROTTLE_KEY } from './auth/decorators/auth-throttle.decorator';
 import { MailModule } from './mail/mail.module';
 import { CommonModule } from './common/common.module';
 import { UsersModule } from './users/users.module';
@@ -61,9 +62,10 @@ import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
     MailModule,
     CommonModule,
     ThrottlerModule.forRootAsync({
-      inject: [RuntimeConfigService],
+      inject: [RuntimeConfigService, Reflector],
       useFactory: (
         runtimeConfig: RuntimeConfigService,
+        reflector: Reflector,
       ): ThrottlerModuleOptions => ({
         throttlers: [
           {
@@ -75,6 +77,19 @@ import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
             name: 'long',
             ttl: () => runtimeConfig.getNumber('THROTTLE_LONG_TTL'),
             limit: () => runtimeConfig.getNumber('THROTTLE_LONG_LIMIT'),
+          },
+          {
+            name: 'auth',
+            ttl: () => runtimeConfig.getNumber('THROTTLE_AUTH_TTL'),
+            limit: () => runtimeConfig.getNumber('THROTTLE_AUTH_LIMIT'),
+            // Only enforce on routes marked with @AuthThrottle()
+            skipIf: (context) => {
+              const isAuthSensitive = reflector.getAllAndOverride<boolean>(
+                AUTH_THROTTLE_KEY,
+                [context.getHandler(), context.getClass()],
+              );
+              return !isAuthSensitive;
+            },
           },
         ],
       }),
